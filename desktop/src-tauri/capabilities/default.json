@@ -20,6 +20,7 @@
     "dialog:default",
     "updater:default",
     "process:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "drag:default"
   ]
 }

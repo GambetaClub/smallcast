@@ -8,8 +8,6 @@ import type {
   PaletteEntry,
   Quicklink,
   Snippet,
-  Workspace,
-  WorkspaceList,
 } from "./types";
 
 export interface Settings {
@@ -19,7 +17,6 @@ export interface Settings {
   show_quicklinks_inline: boolean;
   screenshot_dirs: string[];
   check_updates_on_launch: boolean;
-  bg_image_override: string | null;
   github_repos: string[];
   enable_recommendations: boolean;
 }
@@ -64,8 +61,6 @@ export const api = {
     invoke<void>("set_screenshot_dirs", { value }),
   setCheckUpdatesOnLaunch: (value: boolean) =>
     invoke<void>("set_check_updates_on_launch", { value }),
-  setBgImageOverride: (value: string | null) =>
-    invoke<void>("set_bg_image_override", { value }),
   setGithubRepos: (value: string[]) =>
     invoke<void>("set_github_repos", { value }),
   setEnableRecommendations: (value: boolean) =>
@@ -135,14 +130,6 @@ export const api = {
     invoke<import("./types").AnalyticsSummary>("analytics_summary"),
   analyticsClear: () => invoke<void>("analytics_clear"),
   analyticsLogPath: () => invoke<string | null>("analytics_log_path"),
-
-  // Workspaces
-  listWorkspaces: () => invoke<WorkspaceList>("list_workspaces"),
-  setActiveWorkspace: (id: string) =>
-    invoke<void>("set_active_workspace", { id }),
-  createWorkspace: (name: string, color?: string) =>
-    invoke<Workspace>("create_workspace", { name, color }),
-  deleteWorkspace: (id: string) => invoke<void>("delete_workspace", { id }),
 
   // Items
   listItems: () => invoke<Item[]>("list_items"),
@@ -223,14 +210,6 @@ export const api = {
   fileThumbnail: (path: string) =>
     invoke<string | null>("file_thumbnail", { path }),
 
-  // Window management — operate on the frontmost (non-davidcast) window.
-  wmLeftHalf: () => invoke<void>("wm_left_half"),
-  wmRightHalf: () => invoke<void>("wm_right_half"),
-  wmTopHalf: () => invoke<void>("wm_top_half"),
-  wmBottomHalf: () => invoke<void>("wm_bottom_half"),
-  wmMaximize: () => invoke<void>("wm_maximize"),
-  wmCenter: () => invoke<void>("wm_center"),
-
   // System stats — one snapshot per call (no live sampler in the
   // backend). The Stats view re-invokes on its refresh button.
   systemStats: () => invoke<import("./types").SystemStats>("system_stats"),
@@ -250,13 +229,7 @@ export const api = {
   readSkill: (path: string) => invoke<string>("read_skill", { path }),
 
   // Themes
-  listThemes: () => invoke<import("./types").Theme[]>("list_themes"),
   getActiveTheme: () => invoke<import("./types").Theme>("get_active_theme"),
-  setActiveTheme: (id: string) =>
-    invoke<import("./types").Theme>("set_active_theme", { id }),
-  importTheme: (path: string) =>
-    invoke<import("./types").Theme>("import_theme", { path }),
-  themesDir: () => invoke<string | null>("themes_dir"),
 
   // Clipboard history
   listClipboard: () => invoke<ClipboardEntry[]>("list_clipboard"),

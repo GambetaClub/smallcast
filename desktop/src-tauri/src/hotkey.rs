@@ -37,20 +37,11 @@ pub fn blur_within_hotkey_grace() -> bool {
 }
 
 pub fn default_shortcut() -> Shortcut {
-    // ⌥ Space — historical Raycast default, easier on the left hand than ⌃ Space.
-    Shortcut::new(Some(Modifiers::ALT), Code::Space)
+    Shortcut::new(Some(Modifiers::SUPER), Code::Space)
 }
 
 pub fn clipboard_shortcut() -> Shortcut {
     Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyV)
-}
-
-pub fn iterm_shortcut() -> Shortcut {
-    // ⌃⌥I — dedicated iTerm launcher. iTerm accounts for ~40% of all
-    // palette executes by analytics, almost always reached via "ite" +
-    // Enter. A single hotkey saves three keystrokes per launch and
-    // skips the palette UI entirely.
-    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyI)
 }
 
 pub fn on_palette_shortcut(app: &AppHandle, _shortcut: &Shortcut, state: ShortcutState) {
@@ -69,21 +60,6 @@ pub fn on_clipboard_shortcut(app: &AppHandle, _shortcut: &Shortcut, state: Short
     }
     LAST_HOTKEY_MS.store(now_ms(), Ordering::SeqCst);
     open_clipboard(app);
-}
-
-pub fn on_iterm_shortcut(_app: &AppHandle, _shortcut: &Shortcut, state: ShortcutState) {
-    if state != ShortcutState::Pressed {
-        return;
-    }
-    LAST_HOTKEY_MS.store(now_ms(), Ordering::SeqCst);
-    // Direct launch — don't surface the palette. `open -a iTerm` uses
-    // LaunchServices to resolve the bundle, so it works regardless of
-    // install location.
-    let mut cmd = std::process::Command::new("open");
-    cmd.arg("-a").arg("iTerm");
-    // Bounded — `open -a` can stall if LaunchServices is busy or iTerm hangs
-    // mid-launch, and this runs on the global-shortcut dispatch thread.
-    let _ = crate::proc::output_with_timeout(cmd, std::time::Duration::from_secs(5));
 }
 
 pub fn toggle_palette(app: &AppHandle) {

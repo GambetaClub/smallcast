@@ -79,15 +79,6 @@ pub struct Config {
     /// most common redirect target. Stored as resolved absolute paths.
     #[serde(default = "default_screenshot_dirs")]
     pub screenshot_dirs: Vec<String>,
-    /// Active theme id. Matches `themes::Theme::id` — built-in (`default`,
-    /// `light`, `high-contrast`) or any user-imported theme filename.
-    #[serde(default = "default_theme_id")]
-    pub theme: String,
-    /// User override for the palette's `--bg-image` token. When set,
-    /// it replaces whatever the active theme provides (`None` keeps the
-    /// theme's value). Free-form CSS — gradient strings or `url("…")`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bg_image_override: Option<String>,
     /// Repositories the GitHub plugin tracks for PR / issue listings.
     /// Format: "owner/repo". Empty by default — the user adds repos in
     /// Preferences. Auth piggybacks on `gh auth login`.
@@ -160,10 +151,6 @@ impl Default for BackupConfig {
     }
 }
 
-fn default_theme_id() -> String {
-    "default".to_string()
-}
-
 fn default_screenshot_dirs() -> Vec<String> {
     let Some(home) = dirs::home_dir() else {
         return Vec::new();
@@ -194,8 +181,6 @@ impl Default for Config {
             show_snippets_inline: true,
             show_quicklinks_inline: true,
             screenshot_dirs: default_screenshot_dirs(),
-            theme: default_theme_id(),
-            bg_image_override: None,
             github_repos: Vec::new(),
             check_updates_on_launch: true,
             backup: BackupConfig::default(),
@@ -331,12 +316,6 @@ mod tests {
         assert!(c.show_docker_inline);
         assert!(c.show_snippets_inline);
         assert!(c.show_quicklinks_inline);
-    }
-
-    #[test]
-    fn config_default_theme_is_default() {
-        let c = Config::default();
-        assert_eq!(c.theme, "default");
     }
 
     #[test]

@@ -11,7 +11,6 @@ import {
   isQuicklink,
   isSkill,
   isSnippet,
-  isTheme,
   isVite,
   type PaletteEntry,
 } from "./types";
@@ -80,7 +79,6 @@ describe("type guards", () => {
       [isVite, { kind: "vite" } as PaletteEntry, app],
       [isDocker, { kind: "docker" } as PaletteEntry, app],
       [isFile, { kind: "file" } as PaletteEntry, app],
-      [isTheme, { kind: "theme" } as PaletteEntry, app],
       [isClipboard, { kind: "clipboard" } as PaletteEntry, app],
       [isSkill, { kind: "skill" } as PaletteEntry, app],
     ];

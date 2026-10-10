@@ -36,7 +36,7 @@
     "active": true,
     "targets": ["app"],
     "category": "Productivity",
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -48,7 +48,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/davidbroza/davidcast/releases/latest/download/latest.json"
+        "https://127.0.0.1:9/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUxQkJDMjY4MzY3OUVGMzIKUldReTczazJhTUs3VVFNQk9VcHNWOEU0NzBaTm1JZHNrWmJWZ3N1bytVL0tqR0hwcDVsaUZ4YTQK"
     }

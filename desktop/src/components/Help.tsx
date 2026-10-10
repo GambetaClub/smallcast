@@ -24,17 +24,12 @@ type Group = {
 const GROUPS: Group[] = [
   {
     title: "Palette basics",
-    blurb: "Press ⌥ Space anywhere to open it. Type to fuzzy-search across everything.",
+    blurb: "Press ⌘ Space anywhere to open it. Type to fuzzy-search across everything.",
     features: [
       {
         name: "Toggle palette",
-        shortcut: <kbd>⌥ Space</kbd>,
+        shortcut: <kbd>⌘ Space</kbd>,
         description: "Global hotkey. Hides on blur so it always feels like a launcher.",
-      },
-      {
-        name: "Launch iTerm",
-        shortcut: <><kbd>⌃</kbd>+<kbd>⌥</kbd>+<kbd>I</kbd></>,
-        description: "Direct hotkey — bypasses the palette. iTerm is the most-launched item by analytics, so it earns its own shortcut.",
       },
       {
         name: "Run / open selected",
@@ -115,7 +110,7 @@ const GROUPS: Group[] = [
       {
         name: "Find Files",
         command: "files.find",
-        description: "fd-backed search. Filter tokens: :png :img :newest. ⌘C path · ⌘R reveal.",
+        description: "Searches your home folder (fsearch). Filter tokens: :png :img :newest. ⌘C path · ⌘R reveal · right-click copies path · drag a row into any app.",
       },
       {
         name: "Find Screenshots",
@@ -133,16 +128,6 @@ const GROUPS: Group[] = [
         shortcut: <kbd>⌘⇧V</kbd>,
         description: "Recent clipboard entries — Enter pastes, ⌘⌫ removes from history.",
       },
-      {
-        name: "Window Management",
-        command: "wm.*",
-        description: "Left/right/top/bottom half, maximize, center the frontmost (non-davidcast) window.",
-      },
-      {
-        name: "Switch Theme",
-        command: "themes.switch",
-        description: "Built-in themes plus any JSON dropped in ~/.../davidcast/themes.",
-      },
     ],
   },
   {
@@ -152,7 +137,7 @@ const GROUPS: Group[] = [
       {
         name: "Lock Screen",
         command: "system.lock",
-        description: "Sends ⌃⌘Q (the macOS Lock Screen shortcut). Needs Accessibility, same as window management.",
+        description: "Sends ⌃⌘Q (the macOS Lock Screen shortcut). Needs Accessibility.",
       },
       {
         name: "Sleep",
@@ -182,28 +167,13 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    title: "Workspaces",
-    features: [
-      {
-        name: "Switch Workspace",
-        command: "switch.workspace",
-        shortcut: <kbd>⌘K</kbd>,
-        description: "Per-workspace snippet/quicklink scope. Workspace pill in the topbar shows the active one.",
-      },
-      {
-        name: "Manage workspaces",
-        description: "Create, rename, and delete via Preferences. Deletes leave files on disk for safety.",
-      },
-    ],
-  },
-  {
     title: "Other",
     features: [
       {
         name: "Open Preferences",
         command: "open.preferences",
         shortcut: <kbd>⌘,</kbd>,
-        description: "Inline preferences view — autostart, search filters, plugins, workspaces, import.",
+        description: "Inline preferences view — autostart, search filters, plugins, import.",
       },
       {
         name: "Show Help",
@@ -268,7 +238,7 @@ export function Help({ onClose }: Props) {
             </section>
           ))}
           <div className="help-footer">
-            davidcast — local-first launcher · ⌥ Space toggles the palette
+            davidcast — local-first launcher · ⌘ Space toggles the palette
           </div>
         </div>
     </Screen>

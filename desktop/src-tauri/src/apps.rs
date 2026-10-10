@@ -64,6 +64,10 @@ fn scan_all() -> Vec<AppEntry> {
     for root in roots {
         scan(&root, &mut out, 0);
     }
+    out.push(AppEntry {
+        name: "Finder".to_string(),
+        path: "/System/Library/CoreServices/Finder.app".to_string(),
+    });
     out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     out.dedup_by(|a, b| a.path == b.path);
     out

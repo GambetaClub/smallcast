@@ -1,7 +1,5 @@
-//! File search plugin. Live `fd`-backed lookup across a small list of root
-//! directories the user actually browses. Designed to be cheap on a single
-//! keystroke (fd is parallel + .gitignore-aware) so the palette can debounce
-//! ~200 ms and call straight into here.
+//! File search plugin. Asks the fsearch daemon (whole-disk index) on each
+//! debounced keystroke and filters out files that aren't the user's own.
 //!
 //! Query semantics are decided by the frontend (it parses `:png`, `:img`,
 //! `:newest` etc. and hands us a structured `FileSearchOpts`). This module
@@ -11,7 +9,7 @@
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileEntry {
@@ -43,27 +41,63 @@ const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "heic"];
 /// macOS screencapture writes .mov for screen recordings; users searching
 /// "screenshots" usually want those alongside still PNGs.
 const SCREENSHOT_VIDEO_EXTS: &[&str] = &["mov", "mp4"];
-const EXCLUDES: &[&str] = &[
-    "node_modules",
-    ".git",
-    "target",
-    "dist",
-    ".next",
-    ".turbo",
-    "build",
-    ".venv",
-    "__pycache__",
-];
 
 pub fn default_roots() -> Vec<String> {
+    dirs::home_dir().map(|h| vec![h.to_string_lossy().to_string()]).unwrap_or_default()
+}
+
+/// The empty "recent files" list leaves out code, which changes on every save.
+fn recent_roots() -> Vec<String> {
     let Some(home) = dirs::home_dir() else {
         return Vec::new();
     };
-    ["Desktop", "Documents", "github", "Pictures"]
+    ["Desktop", "Documents", "Downloads", "Pictures", "Movies", "Library/Mobile Documents/com~apple~CloudDocs"]
         .iter()
         .map(|s| home.join(s).to_string_lossy().to_string())
-        .filter(|p| std::path::Path::new(p).exists())
+        .filter(|p| Path::new(p).exists())
         .collect()
+}
+
+const NOISE_DIRS: &[&str] = &[
+    "node_modules", "target", "build", "dist", "out", "coverage", "DerivedData", "__pycache__",
+    "venv", "site-packages", "Pods", "vendor", "worktrees",
+];
+const NOISE_BUNDLE_SUFFIXES: &[&str] = &[".app", ".bundle", ".framework", ".photoslibrary", ".noindex", ".xcassets"];
+const LIBRARY_KEEP: &[&str] = &["Library/Mobile Documents/com~apple~CloudDocs", "Library/CloudStorage"];
+
+/// Hidden folders, app internals, build output and `~/Library` (except iCloud Drive and cloud storage).
+fn is_noise(path: &str, home: &str) -> bool {
+    let rel = path.strip_prefix(home).map(|r| r.trim_start_matches('/')).unwrap_or(path);
+    if rel.starts_with("Library/") && !LIBRARY_KEEP.iter().any(|k| rel.starts_with(k)) {
+        return true;
+    }
+    let mut dirs = rel.split('/').collect::<Vec<_>>();
+    let name = dirs.pop().unwrap_or_default();
+    name.starts_with('.')
+        || dirs.iter().any(|d| {
+            d.starts_with('.') || NOISE_DIRS.contains(d) || NOISE_BUNDLE_SUFFIXES.iter().any(|s| d.ends_with(s))
+        })
+}
+
+/// fsearch forgives typos, so "falko" also hits "Fallback". When some names contain every
+/// typed word, drop the ones that don't; when none do, the user made the typo — keep them all.
+fn drop_lookalikes(hits: &mut Vec<Hit>, pattern: &str) {
+    let words: Vec<String> = pattern
+        .split_whitespace()
+        .filter(|w| !w.contains(':') && !w.starts_with('!'))
+        .map(|w| w.trim_matches(|c| c == '^' || c == '$' || c == '\'').to_lowercase())
+        .filter(|w| !w.is_empty())
+        .collect();
+    if words.is_empty() {
+        return;
+    }
+    let contains_all = |h: &Hit| {
+        let name = h.path.rsplit('/').next().unwrap_or(&h.path).to_lowercase();
+        words.iter().all(|w| name.contains(w.as_str()))
+    };
+    if hits.iter().any(contains_all) {
+        hits.retain(contains_all);
+    }
 }
 
 /// Where macOS is currently saving screenshots. Reads
@@ -113,13 +147,14 @@ pub fn expand_tilde(p: &str) -> String {
 }
 
 pub fn search(mut opts: FileSearchOpts) -> Vec<FileEntry> {
+    let browsing_recent = opts.query.as_deref().map_or(true, |q| q.trim().is_empty()) && opts.sort_by_mtime;
     if opts.roots.is_empty() {
-        opts.roots = default_roots();
+        opts.roots = if browsing_recent { recent_roots() } else { default_roots() };
     }
     let extensions = expand_extensions(&opts.extensions, opts.category.as_deref());
     let limit = opts.limit.unwrap_or(DEFAULT_LIMIT);
 
-    let mut hits: Vec<PathBuf> = Vec::new();
+    let mut hits: Vec<Hit> = Vec::new();
     let pattern = opts
         .query
         .as_deref()
@@ -127,48 +162,92 @@ pub fn search(mut opts: FileSearchOpts) -> Vec<FileEntry> {
         .filter(|s| !s.is_empty())
         .unwrap_or(".");
 
-    for root in &opts.roots {
-        if !std::path::Path::new(root).exists() {
-            continue;
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = opts
+            .roots
+            .iter()
+            .filter(|root| Path::new(root).exists())
+            .map(|root| {
+                let extensions = &extensions;
+                scope.spawn(move || {
+                    if opts.sort_by_mtime {
+                        newest_paths(pattern, root, extensions, limit)
+                    } else {
+                        fsearch_paths(pattern, root, extensions, None, FSEARCH_HITS)
+                    }
+                })
+            })
+            .collect();
+        for w in workers {
+            hits.extend(w.join().ok().flatten().unwrap_or_default());
         }
-        let Some(out) = run_fd(pattern, root, &extensions) else {
-            continue;
-        };
-        for line in out.lines() {
-            if line.is_empty() {
-                continue;
-            }
-            hits.push(PathBuf::from(line));
-        }
-    }
-
-    let mut entries: Vec<FileEntry> = hits
-        .into_iter()
-        .filter_map(|p| decorate(&p))
-        .collect();
-
+    });
+    drop_lookalikes(&mut hits, pattern);
     if opts.sort_by_mtime {
-        entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+        hits.sort_by(|a, b| b.mtime.cmp(&a.mtime));
+    } else {
+        hits.sort_by(|a, b| b.score.total_cmp(&a.score).then(b.mtime.cmp(&a.mtime)));
     }
-    entries.truncate(limit);
-    entries
+
+    hits.into_iter()
+        .filter_map(|h| decorate(Path::new(&h.path)))
+        .take(limit)
+        .collect()
 }
 
-fn run_fd(pattern: &str, root: &str, extensions: &[String]) -> Option<String> {
-    let mut cmd = std::process::Command::new("fd");
-    cmd.args(["--type", "f", "--max-depth", "8", "--hidden", "--no-ignore-vcs"]);
-    for ex in EXCLUDES {
-        cmd.args(["--exclude", ex]);
+struct Hit {
+    path: String,
+    score: f64,
+    mtime: u64,
+}
+
+const FSEARCH_HITS: usize = 5000;
+const NEWEST_WINDOWS: &[&str] = &["1h", "6h", "1d", "7d", "30d", "365d"];
+
+fn fsearch_paths(pattern: &str, root: &str, extensions: &[String], window: Option<&str>, hits: usize) -> Option<Vec<Hit>> {
+    if root.contains('"') {
+        return None;
     }
-    for ext in extensions {
-        cmd.args(["--extension", ext]);
+    let mut query = format!("kind:file in:\"{root}\" limit:{hits}");
+    if !extensions.is_empty() {
+        query.push_str(&format!(" ext:{}", extensions.join(",")));
     }
-    cmd.arg(pattern);
-    cmd.arg(root);
-    // fd over a deep/large tree (or a stale network mount) can run long — cap
-    // it so a slow root can't stall the whole search.
+    if let Some(w) = window {
+        query.push_str(&format!(" mtime:<{w}"));
+    }
+    if pattern != "." {
+        query.push(' ');
+        query.push_str(pattern);
+    }
+    let mut cmd = std::process::Command::new(dirs::home_dir()?.join(".local/bin/fsearch"));
+    cmd.arg(query).arg("--json");
     let out = crate::proc::capture_stdout(cmd, std::time::Duration::from_secs(6))?;
-    Some(String::from_utf8_lossy(&out).into_owned())
+    let json: serde_json::Value = serde_json::from_slice(&out).ok()?;
+    let hits = json["hits"].as_array()?;
+    let home = dirs::home_dir()?.to_string_lossy().to_string();
+    Some(
+        hits.iter()
+            .filter_map(|h| {
+                let path = h["path"].as_str()?;
+                (!is_noise(path, &home)).then(|| Hit {
+                    path: path.to_string(),
+                    score: h["score"].as_f64().unwrap_or(0.0),
+                    mtime: h["mtime"].as_u64().unwrap_or(0),
+                })
+            })
+            .collect(),
+    )
+}
+
+/// fsearch has no sort-by-mtime, so widen the time window until it holds `limit` files.
+fn newest_paths(pattern: &str, root: &str, extensions: &[String], limit: usize) -> Option<Vec<Hit>> {
+    for window in NEWEST_WINDOWS {
+        let paths = fsearch_paths(pattern, root, extensions, Some(window), FSEARCH_HITS)?;
+        if paths.len() >= limit {
+            return Some(paths);
+        }
+    }
+    fsearch_paths(pattern, root, extensions, None, FSEARCH_HITS)
 }
 
 fn decorate(p: &Path) -> Option<FileEntry> {
@@ -207,6 +286,9 @@ fn decorate(p: &Path) -> Option<FileEntry> {
 fn home_relative(p: &str) -> String {
     if let Some(home) = dirs::home_dir() {
         let h = home.to_string_lossy().to_string();
+        if let Some(rest) = p.strip_prefix(&format!("{h}/Library/Mobile Documents/com~apple~CloudDocs")) {
+            return format!("iCloud Drive{rest}");
+        }
         if let Some(rest) = p.strip_prefix(&h) {
             return format!("~{rest}");
         }
@@ -380,3 +462,4 @@ mod tests {
         }
     }
 }
+

@@ -2,8 +2,6 @@ import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Settings } from "./api";
-import { fireConfetti } from "./confetti";
-import { fireLasers } from "./lasers";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { r2, scheduleIdle } from "./utils";
 import { Analytics } from "./components/Analytics";
@@ -13,8 +11,7 @@ import { Palette } from "./components/Palette";
 import { Preferences } from "./components/Preferences";
 import { Stats } from "./components/Stats";
 import { UpdateBanner } from "./components/UpdateBanner";
-import { WorkspaceSwitcher } from "./components/WorkspaceSwitcher";
-import { stableEntryKey, type Item, type PaletteEntry, type Theme, type Workspace } from "./types";
+import { stableEntryKey, type Item, type PaletteEntry, type Theme } from "./types";
 
 const ENTRIES_CACHE_KEY = "davidcast.entries.cache.v1";
 
@@ -41,57 +38,12 @@ function loadCachedEntries(): PaletteEntry[] {
 }
 
 /// Set CSS variables on the document root from a theme. Mirrors the
-/// `--<name>` shape used in palette.css; everything kept on the root
-/// applies to both the palette and prefs windows in this bundle.
-///
-/// `override.bgImage`, if set, takes precedence over the theme's own
-/// `bg-image` token — that's how the Preferences "Background" picker
-/// hangs custom CSS off any theme without forking the theme itself.
-/// The override is also cached in localStorage so theme-switch hover
-/// previews (which call applyTheme without going through App's
-/// settings state) preserve the user's choice.
-const BG_OVERRIDE_KEY = "davidcast.bg_image_override";
-
-export function setBgImageOverrideCache(value: string | null) {
-  try {
-    if (value && value.trim()) localStorage.setItem(BG_OVERRIDE_KEY, value);
-    else localStorage.removeItem(BG_OVERRIDE_KEY);
-  } catch {
-    // localStorage may be unavailable in some sandboxes — non-fatal.
-  }
-}
-
-function readBgImageOverrideCache(): string | null {
-  try {
-    return localStorage.getItem(BG_OVERRIDE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function applyTheme(
-  theme: Theme,
-  override?: { bgImage?: string | null },
-) {
+/// `--<name>` shape used in palette.css.
+function applyTheme(theme: Theme) {
   const root = document.documentElement;
   for (const [k, v] of Object.entries(theme.tokens)) {
     root.style.setProperty(`--${k}`, v);
   }
-  // Resolve effective override: explicit arg > localStorage cache > none.
-  const effective =
-    override?.bgImage !== undefined
-      ? override.bgImage
-      : readBgImageOverrideCache();
-  if (effective != null && effective !== "") {
-    root.style.setProperty("--bg-image", effective);
-  } else if (!theme.tokens["bg-image"]) {
-    // No override + theme didn't ship one — clear stale value so we
-    // don't carry a previous theme's gradient onto a plain one.
-    root.style.removeProperty("--bg-image");
-  }
-  // Theme id on documentElement so theme-scoped CSS (LCARS endcaps,
-  // etc.) can target a single theme without us forking the markup.
-  root.dataset.theme = theme.id;
 }
 
 export type Session = {
@@ -113,7 +65,6 @@ type View =
   | { kind: "palette" }
   | { kind: "create"; presetKind: "snippet" | "quicklink" }
   | { kind: "edit"; item: Item }
-  | { kind: "workspace-switcher" }
   | { kind: "preferences" }
   | { kind: "help" }
   | { kind: "analytics" }
@@ -126,8 +77,6 @@ export default function App() {
   // very first ⌃Space after launch — before list_palette has had a chance
   // to return. The next refresh will replace anything stale.
   const [entries, setEntries] = useState<PaletteEntry[]>(loadCachedEntries);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspace, setActiveWorkspace] = useState<string>("");
   const [settings, setSettings] = useState<Settings>({
     show_vite_inline: true,
     show_docker_inline: true,
@@ -135,7 +84,6 @@ export default function App() {
     show_quicklinks_inline: true,
     screenshot_dirs: [],
     check_updates_on_launch: true,
-    bg_image_override: null,
     github_repos: [],
     enable_recommendations: false,
   });
@@ -161,13 +109,7 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     const t0 = performance.now();
-    const [ws, list, s] = await Promise.all([
-      api.listWorkspaces(),
-      api.listPalette(),
-      api.getSettings(),
-    ]);
-    setWorkspaces(ws.workspaces);
-    setActiveWorkspace(ws.active);
+    const [list, s] = await Promise.all([api.listPalette(), api.getSettings()]);
     const fp = entriesFingerprint(list);
     const changed = fp !== entriesFingerprintRef.current;
     if (changed) {
@@ -191,19 +133,10 @@ export default function App() {
     refresh().catch((e) => setError(String(e)));
   }, [refresh]);
 
-  // Pull and apply the active theme on mount, layering any user
-  // background override on top. Failures fall back to the CSS defaults
-  // baked into palette.css.
+  // Pull and apply the theme on mount. Failures fall back to the CSS
+  // defaults baked into palette.css.
   useEffect(() => {
-    Promise.all([api.getActiveTheme(), api.getSettings()])
-      .then(([theme, settings]) => {
-        // Hydrate the localStorage cache from disk so subsequent
-        // applyTheme calls (theme preview, commit) pick up the
-        // override without us threading state through every caller.
-        setBgImageOverrideCache(settings.bg_image_override);
-        applyTheme(theme, { bgImage: settings.bg_image_override });
-      })
-      .catch(() => {});
+    api.getActiveTheme().then(applyTheme).catch(() => {});
   }, []);
 
   // Check for updates on launch, gated by user setting. Silent when no
@@ -350,29 +283,6 @@ export default function App() {
       case "app.check_updates":
         checkForUpdateNow();
         break;
-      case "switch.workspace":
-        setView({ kind: "workspace-switcher" });
-        break;
-      // Window management — these dispatch through Tauri so they all share
-      // the same hide-palette + 60ms grace + osascript pattern.
-      case "wm.left":
-        api.wmLeftHalf().catch((e) => setError(String(e)));
-        break;
-      case "wm.right":
-        api.wmRightHalf().catch((e) => setError(String(e)));
-        break;
-      case "wm.top":
-        api.wmTopHalf().catch((e) => setError(String(e)));
-        break;
-      case "wm.bottom":
-        api.wmBottomHalf().catch((e) => setError(String(e)));
-        break;
-      case "wm.maximize":
-        api.wmMaximize().catch((e) => setError(String(e)));
-        break;
-      case "wm.center":
-        api.wmCenter().catch((e) => setError(String(e)));
-        break;
       // System quick actions. Reversible ones (lock, sleep) fire
       // immediately; destructive ones go through a native confirm so a
       // stray ↵ on a fuzzy match can't shut the machine down.
@@ -409,17 +319,6 @@ export default function App() {
           "macOS will close all apps in this session.",
           api.systemLogOut,
         );
-        break;
-      // "Switch Theme" is handled inline by the Palette via kindFilter.
-      // Nothing for App to do here.
-      case "fx.confetti":
-        // Manual confetti trigger. Imported statically so the trigger
-        // is synchronous — dynamic imports added a frame's delay that
-        // was masking the burst behind the palette dismiss in some flows.
-        fireConfetti({ count: 200 });
-        break;
-      case "fx.lasers":
-        fireLasers({ count: 24 });
         break;
     }
   }
@@ -472,8 +371,6 @@ export default function App() {
       {view.kind === "palette" && (
         <Palette
           entries={entries}
-          workspaces={workspaces}
-          activeWorkspaceId={activeWorkspace}
           settings={settings}
           session={session}
           initialFilter={initialFilter}
@@ -482,29 +379,6 @@ export default function App() {
           refresh={refresh}
           onError={setError}
         />
-      )}
-      {view.kind === "workspace-switcher" && (
-        <>
-          <Palette
-            entries={entries}
-            workspaces={workspaces}
-            activeWorkspaceId={activeWorkspace}
-            settings={settings}
-            session={session}
-            initialFilter={initialFilter}
-            onEdit={(item) => setView({ kind: "edit", item })}
-            onCommand={onCommand}
-            refresh={refresh}
-            onError={setError}
-          />
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            activeId={activeWorkspace}
-            onClose={backToPalette}
-            onSwitched={refresh}
-            onError={setError}
-          />
-        </>
       )}
       {view.kind === "preferences" && (
         <Preferences onClose={backToPalette} onError={setError} />

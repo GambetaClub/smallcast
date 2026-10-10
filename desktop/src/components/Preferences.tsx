@@ -3,7 +3,6 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useState } from "react";
 import { Screen } from "./Screen";
 import { api, type Settings } from "../api";
-import type { Workspace } from "../types";
 import { relativeTime } from "../utils";
 
 type Props = {
@@ -12,11 +11,8 @@ type Props = {
 };
 
 export function Preferences({ onClose, onError }: Props) {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [active, setActive] = useState<string>("");
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [newWsName, setNewWsName] = useState("");
   // Perf pill is a debug toggle, kept in localStorage rather than the
   // canonical Config so it stays per-machine.
   const [perfPillEnabled, setPerfPillEnabled] = useState<boolean>(() => {
@@ -29,13 +25,10 @@ export function Preferences({ onClose, onError }: Props) {
 
   const refresh = useCallback(async () => {
     try {
-      const [ws, as, s] = await Promise.all([
-        api.listWorkspaces(),
+      const [as, s] = await Promise.all([
         isEnabled().catch(() => false),
         api.getSettings(),
       ]);
-      setWorkspaces(ws.workspaces);
-      setActive(ws.active);
       setAutostart(as);
       setSettings(s);
     } catch (e) {
@@ -98,28 +91,6 @@ export function Preferences({ onClose, onError }: Props) {
     }
   }
 
-  async function addWorkspace() {
-    const name = newWsName.trim();
-    if (!name) return;
-    try {
-      await api.createWorkspace(name);
-      setNewWsName("");
-      await refresh();
-    } catch (e) {
-      onError(String(e));
-    }
-  }
-
-  async function removeWorkspace(id: string) {
-    if (!confirm(`Delete workspace "${id}"? Items stay on disk but become unreachable.`)) return;
-    try {
-      await api.deleteWorkspace(id);
-      await refresh();
-    } catch (e) {
-      onError(String(e));
-    }
-  }
-
   return (
     <Screen kind="prefs" title="Preferences" onClose={onClose}>
       <div className="prefs">
@@ -143,7 +114,7 @@ export function Preferences({ onClose, onError }: Props) {
               <div className="label">
                 <div className="label-title">Global hotkey</div>
                 <div className="label-sub">
-                  Press <kbd>⌥ Space</kbd> anywhere to toggle the palette. Rebinding
+                  Press <kbd>⌘ Space</kbd> anywhere to toggle the palette. Rebinding
                   lands in a later release.
                 </div>
               </div>
@@ -321,41 +292,8 @@ export function Preferences({ onClose, onError }: Props) {
             )}
           </section>
 
-          <h2>Background</h2>
-          <BackgroundSection onError={onError} />
-
           <h2>GitHub</h2>
           <GitHubSection onError={onError} />
-
-          <h2>Workspaces</h2>
-          <section>
-            {workspaces.map((w) => (
-              <div key={w.id} className="prefs-ws">
-                <span
-                  className="ws-dot"
-                  style={w.color ? { background: w.color } : undefined}
-                />
-                <span className="ws-name">{w.name}</span>
-                {w.id === active && <span className="ws-badge">active</span>}
-                {workspaces.length > 1 && (
-                  <button className="btn danger" onClick={() => removeWorkspace(w.id)}>
-                    Delete
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="prefs-add">
-              <input
-                value={newWsName}
-                onChange={(e) => setNewWsName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addWorkspace()}
-                placeholder="New workspace name"
-              />
-              <button className="btn primary" onClick={addWorkspace}>
-                Add
-              </button>
-            </div>
-          </section>
 
           <h2>Backup (Git)</h2>
           <BackupSection onError={onError} />
@@ -370,43 +308,6 @@ export function Preferences({ onClose, onError }: Props) {
     </Screen>
   );
 }
-
-// Curated background presets — what most people want without typing
-// CSS. The values are passed verbatim to `--bg-image`; the var is
-// composited over the active theme's `--bg`.
-const BG_PRESETS: Array<{ id: string; label: string; value: string | null }> = [
-  { id: "theme", label: "Use theme default", value: null },
-  {
-    id: "scanlines",
-    label: "Holographic scanlines",
-    value:
-      "repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px)",
-  },
-  {
-    id: "starfield",
-    label: "Starfield",
-    value:
-      "radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.30) 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.25) 0 1px, transparent 2px), radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.22) 0 1px, transparent 2px), radial-gradient(circle at 90% 20%, rgba(255, 255, 255, 0.20) 0 1px, transparent 2px)",
-  },
-  {
-    id: "cyberpunk-grid",
-    label: "Cyberpunk grid",
-    value:
-      "linear-gradient(rgba(0, 240, 255, 0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 0, 170, 0.10) 1px, transparent 1px)",
-  },
-  {
-    id: "plasma",
-    label: "Plasma glow",
-    value:
-      "radial-gradient(ellipse at top left, rgba(120, 80, 220, 0.35), transparent 55%), radial-gradient(ellipse at bottom right, rgba(220, 80, 160, 0.30), transparent 55%)",
-  },
-  {
-    id: "nebula",
-    label: "Nebula",
-    value:
-      "radial-gradient(ellipse at 30% 20%, rgba(80, 180, 255, 0.20), transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(255, 100, 200, 0.20), transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(60, 30, 100, 0.30), transparent 60%)",
-  },
-];
 
 /// Status panel under the "Smart palette ranking" toggle. Loads the
 /// recommender's current state on mount, exposes Retrain / Reset buttons,
@@ -578,113 +479,6 @@ function RecommenderSection({ onError }: { onError: (s: string) => void }) {
         </div>
       )}
     </>
-  );
-}
-
-function BackgroundSection({ onError }: { onError: (s: string) => void }) {
-  const [override, setOverride] = useState<string | null>(null);
-  const [custom, setCustom] = useState<string>("");
-
-  useEffect(() => {
-    api
-      .getSettings()
-      .then((s) => {
-        setOverride(s.bg_image_override);
-        if (s.bg_image_override && !BG_PRESETS.some((p) => p.value === s.bg_image_override)) {
-          setCustom(s.bg_image_override);
-        }
-      })
-      .catch((e) => onError(String(e)));
-  }, [onError]);
-
-  async function commit(value: string | null) {
-    try {
-      await api.setBgImageOverride(value);
-      setOverride(value);
-      // Re-apply current theme so the bg picks up immediately. The
-      // localStorage cache also gets refreshed.
-      const cacheModule = await import("../App");
-      cacheModule.setBgImageOverrideCache(value);
-      const theme = await api.getActiveTheme();
-      cacheModule.applyTheme(theme, { bgImage: value });
-    } catch (e) {
-      onError(String(e));
-    }
-  }
-
-  const activePresetId =
-    override === null
-      ? "theme"
-      : BG_PRESETS.find((p) => p.value === override)?.id ?? "custom";
-
-  return (
-    <section>
-      <p className="prefs-help">
-        Layers a CSS gradient or pattern on top of the active theme&apos;s
-        base color. Use this to dial in a sci-fi vibe without forking a
-        theme. Picking a preset stays through theme switches.
-      </p>
-      <div className="prefs-bg-grid">
-        {BG_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`prefs-bg-tile ${activePresetId === p.id ? "active" : ""}`}
-            onClick={() => commit(p.value)}
-          >
-            <span
-              className="prefs-bg-swatch"
-              style={
-                p.value
-                  ? {
-                      backgroundImage: p.value,
-                      backgroundColor: "var(--bg-solid)",
-                    }
-                  : { backgroundColor: "var(--bg-solid)" }
-              }
-            />
-            <span className="prefs-bg-label">{p.label}</span>
-          </button>
-        ))}
-        <button
-          key="custom"
-          type="button"
-          className={`prefs-bg-tile ${activePresetId === "custom" ? "active" : ""}`}
-          onClick={() => custom.trim() && commit(custom.trim())}
-        >
-          <span
-            className="prefs-bg-swatch"
-            style={
-              custom.trim()
-                ? {
-                    backgroundImage: custom,
-                    backgroundColor: "var(--bg-solid)",
-                  }
-                : { backgroundColor: "var(--bg-solid)" }
-            }
-          />
-          <span className="prefs-bg-label">Custom</span>
-        </button>
-      </div>
-      <div className="prefs-row" style={{ marginTop: 10 }}>
-        <div className="label">
-          <div className="label-title">Custom CSS</div>
-          <div className="label-sub">
-            Anything valid for <code>background-image</code>:{" "}
-            <code>linear-gradient(...)</code>, <code>url(&quot;...&quot;)</code>,
-            stacked layers separated by commas.
-          </div>
-        </div>
-        <input
-          type="text"
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          onBlur={() => custom.trim() && commit(custom.trim())}
-          placeholder="linear-gradient(135deg, #1a1a2e, #16213e)"
-          style={{ flex: 1, fontFamily: "var(--font-family-mono)", fontSize: 12 }}
-        />
-      </div>
-    </section>
   );
 }
 
@@ -1041,7 +835,7 @@ function ImportSection({ onError }: { onError: (s: string) => void }) {
       setResult(
         `Imported ${totalS} snippet(s), ${totalQ} quicklink(s)` +
           (totalSkip ? `, skipped ${totalSkip}` : "") +
-          " into the active workspace."
+          "."
       );
     } catch (e) {
       onError(String(e));

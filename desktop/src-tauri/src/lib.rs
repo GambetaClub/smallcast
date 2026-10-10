@@ -22,7 +22,6 @@ mod system;
 mod themes;
 mod types;
 mod vite_ports;
-mod window_mgmt;
 
 use parking_lot::RwLock;
 use tauri::{
@@ -34,6 +33,15 @@ use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Held for the whole process; the OS releases it on exit or crash.
+    let _single_instance = instance_lock();
+    if matches!(
+        _single_instance.as_ref().map(|f| f.try_lock()),
+        Some(Err(std::fs::TryLockError::WouldBlock))
+    ) {
+        eprintln!("davidcast is already running; quit it first");
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -45,6 +53,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_drag::init())
         .setup(|app| {
             // On macOS, run as an accessory app — no dock icon, menu bar only.
             #[cfg(target_os = "macos")]
@@ -80,11 +89,10 @@ pub fn run() {
             let store = store::Store::load().expect("failed to load davidcast store");
             app.manage(RwLock::new(store));
 
-            // Register global hotkeys: palette + clipboard + iTerm.
+            // Register global hotkeys: palette + clipboard.
             let handle = app.handle().clone();
             let palette_sc = hotkey::default_shortcut();
             let clipboard_sc = hotkey::clipboard_shortcut();
-            let iterm_sc = hotkey::iterm_shortcut();
             app.global_shortcut().on_shortcut(palette_sc, {
                 let handle = handle.clone();
                 move |_app, sc, event| {
@@ -95,12 +103,6 @@ pub fn run() {
                 let handle = handle.clone();
                 move |_app, sc, event| {
                     hotkey::on_clipboard_shortcut(&handle, sc, event.state);
-                }
-            })?;
-            app.global_shortcut().on_shortcut(iterm_sc, {
-                let handle = handle.clone();
-                move |_app, sc, event| {
-                    hotkey::on_iterm_shortcut(&handle, sc, event.state);
                 }
             })?;
 
@@ -304,7 +306,6 @@ pub fn run() {
             commands::set_show_quicklinks_inline,
             commands::set_screenshot_dirs,
             commands::set_check_updates_on_launch,
-            commands::set_bg_image_override,
             commands::set_github_repos,
             commands::github_list_prs,
             commands::github_list_issues,
@@ -340,12 +341,6 @@ pub fn run() {
             commands::file_thumbnail,
             commands::list_skills,
             commands::read_skill,
-            commands::wm_left_half,
-            commands::wm_right_half,
-            commands::wm_top_half,
-            commands::wm_bottom_half,
-            commands::wm_maximize,
-            commands::wm_center,
             commands::system_stats,
             commands::system_lock_screen,
             commands::system_sleep,
@@ -353,15 +348,7 @@ pub fn run() {
             commands::system_restart,
             commands::system_shut_down,
             commands::system_log_out,
-            commands::list_themes,
             commands::get_active_theme,
-            commands::set_active_theme,
-            commands::import_theme,
-            commands::themes_dir,
-            commands::list_workspaces,
-            commands::set_active_workspace,
-            commands::create_workspace,
-            commands::delete_workspace,
             commands::list_items,
             commands::list_palette,
             commands::list_agents,
@@ -393,4 +380,11 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Two copies both answer the hotkey and steal focus from each other.
+fn instance_lock() -> Option<std::fs::File> {
+    let dir = dirs::data_dir()?.join("davidcast");
+    std::fs::create_dir_all(&dir).ok()?;
+    std::fs::File::create(dir.join("instance.lock")).ok()
 }

@@ -1,4 +1,5 @@
 import Fuse from "fuse.js";
+import { startDrag } from "@crabnebula/tauri-plugin-drag";
 import {
   memo,
   useCallback,
@@ -11,7 +12,7 @@ import {
 } from "react";
 import { api, type Settings } from "../api";
 import type { Session } from "../App";
-import type { Item, PaletteEntry, Workspace } from "../types";
+import type { Item, PaletteEntry } from "../types";
 import {
   asItem,
   extractPlaceholders,
@@ -27,14 +28,10 @@ import {
   isQuicklink,
   isSkill,
   isSnippet,
-  isTheme,
   isVite,
 } from "../types";
 import type { FileSearchOpts } from "../types";
-import { applyTheme } from "../App";
 import { evaluateMath } from "../calc";
-import { fireConfetti } from "../confetti";
-import { fireLasers } from "../lasers";
 import { r2, scheduleIdle } from "../utils";
 
 type KindFilter = PaletteEntry["kind"] | null;
@@ -168,8 +165,6 @@ function touchRecent(key: string) {
 
 type Props = {
   entries: PaletteEntry[];
-  workspaces: Workspace[];
-  activeWorkspaceId: string;
   settings: Settings;
   session: Session;
   initialFilter?: KindFilter;
@@ -181,8 +176,6 @@ type Props = {
 
 export function Palette({
   entries,
-  workspaces,
-  activeWorkspaceId,
   settings,
   session,
   initialFilter,
@@ -198,12 +191,12 @@ export function Palette({
   const deferredQuery = useDeferredValue(query);
   const [selected, setSelected] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
   const [kindFilter, setKindFilter] = useState<KindFilter>(initialFilter ?? null);
   const [clipboardEntries, setClipboardEntries] = useState<PaletteEntry[]>([]);
   const [fileEntries, setFileEntries] = useState<PaletteEntry[]>([]);
   const [screenshotMode, setScreenshotMode] = useState(false);
-  const [themeEntries, setThemeEntries] = useState<PaletteEntry[]>([]);
   const [skillEntries, setSkillEntries] = useState<PaletteEntry[]>([]);
   const [githubEntries, setGithubEntries] = useState<PaletteEntry[]>([]);
   // Which GitHub mode the user opened ("pr" | "issue" | "assigned" | null).
@@ -241,8 +234,6 @@ export function Palette({
   // hover-select feels normal until the list shifts again.
   const HOVER_WINDOW_MS = 120;
   const lastMoveAtRef = useRef(0);
-
-  const active = workspaces.find((w) => w.id === activeWorkspaceId);
 
   // React to App-driven filter changes (e.g. ⌘⇧V opens straight into clipboard).
   useEffect(() => {
@@ -332,54 +323,6 @@ export function Palette({
     };
   }, [deferredQuery, githubMode, onError]);
 
-  // Theme picker — list_themes is fast (mostly built-ins), fetched once
-  // each time the filter is set.
-  useEffect(() => {
-    if (kindFilter !== "theme") return;
-    let cancelled = false;
-    api
-      .listThemes()
-      .then((rows) => {
-        if (cancelled) return;
-        setThemeEntries(
-          rows.map((r) => ({ kind: "theme" as const, ...r }))
-        );
-      })
-      .catch((e) => onError(String(e)));
-    return () => {
-      cancelled = true;
-    };
-  }, [kindFilter, onError]);
-
-  // Live theme preview while the picker is open. Snapshot the active
-  // theme on entry, apply each highlighted theme to the document for
-  // preview, and revert on exit unless the user pressed ↵ (which sets
-  // themeCommittedRef inside execute() so the cleanup leaves it alone).
-  const originalThemeRef = useRef<import("../types").Theme | null>(null);
-  const themeCommittedRef = useRef(false);
-  useEffect(() => {
-    if (kindFilter !== "theme") return;
-    themeCommittedRef.current = false;
-    let cancelled = false;
-    api
-      .getActiveTheme()
-      .then((t) => {
-        if (!cancelled) originalThemeRef.current = t;
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-      // Leaving the picker: if the user didn't commit a theme via ↵,
-      // revert the document to the snapshot taken on entry. setActiveTheme
-      // was never called in preview mode, so on-disk state is already
-      // the original — only the live CSS vars need to be reverted.
-      if (!themeCommittedRef.current && originalThemeRef.current) {
-        applyTheme(originalThemeRef.current);
-      }
-      originalThemeRef.current = null;
-    };
-  }, [kindFilter]);
-
   // Skills — scan ~/.claude/skills + plugin caches each time the filter
   // is opened so a freshly-installed skill shows up immediately.
   useEffect(() => {
@@ -402,7 +345,6 @@ export function Palette({
   const visibleEntries = useMemo(() => {
     if (kindFilter === "clipboard") return clipboardEntries;
     if (kindFilter === "file") return fileEntries;
-    if (kindFilter === "theme") return themeEntries;
     if (kindFilter === "skill") return skillEntries;
     if (kindFilter === "github_pr" || kindFilter === "github_issue") {
       return githubEntries;
@@ -418,7 +360,7 @@ export function Palette({
       if (e.kind === "quicklink" && !settings.show_quicklinks_inline) return false;
       return true;
     });
-  }, [entries, clipboardEntries, fileEntries, themeEntries, skillEntries, githubEntries, kindFilter, settings]);
+  }, [entries, clipboardEntries, fileEntries, skillEntries, githubEntries, kindFilter, settings]);
 
   // Lazy Fuse: building the index over hundreds of entries with 11 keys is
   // ~30–100ms and was happening synchronously inside useMemo on every
@@ -831,10 +773,6 @@ export function Palette({
             setQuery("");
             setKindFilter("file");
             break;
-          case "themes.switch":
-            setQuery("");
-            setKindFilter("theme");
-            break;
           case "files.screenshots":
             // Dedicated mode: scans the user-configured screenshot dirs
             // (default ~/Desktop), shows a side preview, and copies the
@@ -956,20 +894,6 @@ export function Palette({
         if (outcome !== "cancelled") {
           await api.executeQuicklink(entry.id, args);
         }
-      } else if (isTheme(entry)) {
-        const t = await api.setActiveTheme(entry.id);
-        applyTheme(t);
-        // Tell the preview-mode cleanup not to revert: the user committed.
-        themeCommittedRef.current = true;
-        setToast(`Theme: ${t.name}`);
-        // Themed burst — The Boys gets eye lasers, everything else gets
-        // the standard confetti high-five.
-        if (t.id === "the-boys") {
-          fireLasers({ count: 22 });
-        } else {
-          fireConfetti({ count: 40 });
-        }
-        window.setTimeout(() => setToast(null), 800);
       } else if (isClipboard(entry)) {
         await api.executeClipboard(entry.id);
         setToast("Pasted from history");
@@ -1084,7 +1008,10 @@ export function Palette({
     if (e.key === "Enter") {
       e.preventDefault();
       const entry = filtered[selected];
-      if (!entry) return;
+      if (!entry) {
+        if (!kindFilter && query.trim()) setKindFilter("file");
+        return;
+      }
       // ⌘↵ on a file or skill forces "open in default app" even for
       // images (whose default action would otherwise copy the bitmap)
       // and for skills (whose default action is path-copy).
@@ -1148,14 +1075,7 @@ export function Palette({
     }
     if (e.key === "Escape") {
       e.preventDefault();
-      if (pendingDelete) {
-        setPendingDelete(null);
-        return;
-      }
-      if (kindFilter) {
-        setKindFilter(null);
-        return;
-      }
+      setPendingDelete(null);
       // Stamp now; the blur handler will log the delta when the window
       // actually transitions out of focus. That delta IS what the user
       // feels as the dismiss latency.
@@ -1189,11 +1109,6 @@ export function Palette({
       onCommand("create.snippet");
       return;
     }
-    if (cmd && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      onCommand("switch.workspace");
-      return;
-    }
     if (cmd && e.key === ",") {
       e.preventDefault();
       onCommand("open.preferences");
@@ -1204,6 +1119,20 @@ export function Palette({
       const entry = filtered[selected];
       const item = entry && asItem(entry);
       if (item) onEdit(item);
+      return;
+    }
+    if (cmd && e.key === "Backspace" && query) {
+      e.preventDefault();
+      const input = inputRef.current;
+      const end = input?.selectionStart ?? query.length;
+      let start = 0;
+      if (e.altKey) {
+        start = end;
+        while (start > 0 && /\s/.test(query[start - 1])) start--;
+        while (start > 0 && !/\s/.test(query[start - 1])) start--;
+      }
+      setQuery(query.slice(0, start) + query.slice(end));
+      requestAnimationFrame(() => input?.setSelectionRange(start, start));
       return;
     }
     if (cmd && (e.key === "Backspace" || e.key === "Delete")) {
@@ -1249,15 +1178,6 @@ export function Palette({
   const selectedEntry = filtered[selected];
   const showSidePreview = screenshotMode || kindFilter === "skill";
 
-  // Apply each highlighted theme live while the picker is open. No
-  // setActiveTheme — that's reserved for ↵ commit. Reverts on exit via
-  // the cleanup effect above.
-  useEffect(() => {
-    if (kindFilter !== "theme") return;
-    if (!selectedEntry || !isTheme(selectedEntry)) return;
-    applyTheme(selectedEntry);
-  }, [kindFilter, selectedEntry]);
-
   // Stable refs / handlers so memo'd Row doesn't re-render unnecessarily.
   // execute() is a closure over half the component's state — capturing it
   // in a ref means Row's onClick stays referentially stable across renders.
@@ -1274,6 +1194,20 @@ export function Palette({
     const entry = filteredRef.current[i];
     if (entry) executeRef.current(entry);
   }, []);
+  const handleContextMenu = useCallback((i: number, x: number, y: number) => {
+    const entry = filteredRef.current[i];
+    if (entry && isFile(entry)) setCtxMenu({ x, y, path: entry.path });
+  }, []);
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", close, true);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", close, true);
+    };
+  }, [ctxMenu]);
 
   return (
     <div
@@ -1281,17 +1215,6 @@ export function Palette({
       onKeyDown={handleKey}
     >
       <div className="topbar">
-        <div
-          className="workspace-pill"
-          onClick={() => onCommand("switch.workspace")}
-          title="Switch workspace (⌘K)"
-        >
-          <span
-            className="workspace-dot"
-            style={active?.color ? { background: active.color } : undefined}
-          />
-          {active?.name ?? activeWorkspaceId}
-        </div>
         <div className="topbar-spacer" />
         <span className="topbar-hint">davidcast</span>
       </div>
@@ -1314,6 +1237,9 @@ export function Palette({
           }}
           placeholder={placeholderFor(kindFilter)}
           autoFocus
+          onBlur={(e) => {
+            if (!e.relatedTarget && document.hasFocus()) inputRef.current?.focus();
+          }}
           spellCheck={false}
         />
       </div>
@@ -1325,7 +1251,9 @@ export function Palette({
             <p>
               {kindFilter === "clipboard"
                 ? "Copy something — it'll show up here."
-                : <>Try a different search or <kbd>⌘N</kbd> to create a new item.</>}
+                : !kindFilter && query.trim()
+                  ? <><kbd>↵</kbd> to search your files for “{query.trim()}”.</>
+                  : <>Try a different search or <kbd>⌘N</kbd> to create a new item.</>}
             </p>
           </div>
         ) : (
@@ -1337,6 +1265,7 @@ export function Palette({
               index={i}
               onHover={handleHover}
               onClick={handleClick}
+              onContextMenu={handleContextMenu}
             />
           ))
         )}
@@ -1370,7 +1299,6 @@ export function Palette({
             <span><kbd>⌘⌫</kbd>Delete</span>
             <div className="footer-spacer" />
             <span><kbd>⌘⇧V</kbd>Clipboard</span>
-            <span><kbd>⌘K</kbd>Workspace</span>
             <span><kbd>esc</kbd>Close</span>
           </>
         )}
@@ -1408,6 +1336,30 @@ export function Palette({
         </div>
       )}
       {toast && <div className="toast">✓ {toast}</div>}
+      {ctxMenu && (
+        // Native menus open under the palette's screensaver-level window, so this is drawn in-page.
+        <div
+          className="ctx-menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              const path = ctxMenu.path;
+              setCtxMenu(null);
+              api
+                .copyFilePath(path)
+                .then(() => {
+                  setToast("Path copied");
+                  window.setTimeout(() => setToast(null), 700);
+                })
+                .catch((err) => onError(String(err)));
+            }}
+          >
+            Copy Path
+          </button>
+        </div>
+      )}
       {pendingDelete && (
         <div className="confirm-banner">
           Delete <b>{pendingDelete.name}</b>? Press <kbd>⌘⌫</kbd> again to
@@ -1425,7 +1377,6 @@ function entryKey(e: PaletteEntry): string {
   if (isVite(e)) return `vite:${e.pid}:${e.port}`;
   if (isDocker(e)) return `docker:${e.id}:${e.mode}`;
   if (isFile(e)) return `file:${e.path}`;
-  if (isTheme(e)) return `theme:${e.id}`;
   if (isClipboard(e)) return `clip:${e.id}`;
   if (isSkill(e)) return `skill:${e.path}`;
   if (isGitHubPr(e)) return `ghpr:${e.repo}:${e.number}`;
@@ -1456,8 +1407,6 @@ function kindPriority(e: PaletteEntry): number {
       return 7;
     case "skill":
       return 8;
-    case "theme":
-      return 9;
     case "clipboard":
       return 10;
     case "calc":
@@ -1474,7 +1423,6 @@ function nameOf(e: PaletteEntry): string {
   if (e.kind === "vite") return e.project;
   if (e.kind === "docker") return e.name;
   if (e.kind === "file") return e.name;
-  if (e.kind === "theme") return e.name;
   if (e.kind === "skill") return e.name;
   if (e.kind === "clipboard") return e.text;
   if (e.kind === "github_pr" || e.kind === "github_issue") return e.title;
@@ -1516,8 +1464,6 @@ function filterLabel(k: PaletteEntry["kind"]): string {
       return "Clipboard";
     case "file":
       return "Files";
-    case "theme":
-      return "Themes";
     case "skill":
       return "Skills";
     case "calc":
@@ -1549,8 +1495,6 @@ function placeholderFor(k: KindFilter): string {
       return "Search built-in commands…";
     case "file":
       return "Find files — try :png screenshot, :img :newest, ⌘C path, ⌘R reveal";
-    case "theme":
-      return "Pick a theme — ↵ applies it, drop JSONs in ~/.../davidcast/themes";
     case "skill":
       return "Search Claude Code skills — ↵ copies path, ⌘↵ opens, ⌘⇧C copies contents";
     case "github_pr":
@@ -1570,12 +1514,14 @@ const Row = memo(function Row({
   index,
   onHover,
   onClick,
+  onContextMenu,
 }: {
   entry: PaletteEntry;
   selected: boolean;
   index: number;
   onHover: (i: number) => void;
   onClick: (i: number) => void;
+  onContextMenu: (i: number, x: number, y: number) => void;
 }) {
   let name = "";
   let sub = "";
@@ -1621,10 +1567,6 @@ const Row = memo(function Row({
     name = oneLine(entry.text) || "(empty)";
     sub = `${entry.char_count} chars · ${relativeTime(entry.copied_at)}`;
     badge = "Clipboard";
-  } else if (isTheme(entry)) {
-    name = entry.name;
-    sub = entry.builtin ? "Built-in" : "Custom (JSON)";
-    badge = "Theme";
   } else if (isFile(entry)) {
     name = entry.name;
     sub = `${entry.parent} · ${formatSize(entry.size)} · ${relativeTime(
@@ -1666,6 +1608,16 @@ const Row = memo(function Row({
       className={`row ${selected ? "active" : ""}`}
       onClick={() => onClick(index)}
       onMouseEnter={() => onHover(index)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu(index, e.clientX, e.clientY);
+      }}
+      draggable={isFile(entry)}
+      onDragStart={(e) => {
+        if (!isFile(entry)) return;
+        e.preventDefault();
+        startDrag({ item: [entry.path], icon: THUMB_CACHE.get(entry.path) ?? dragIcon(entry.name) });
+      }}
     >
       <EntryIcon entry={entry} />
       <div className="row-main">
@@ -1736,9 +1688,6 @@ function EntryIcon({ entry }: { entry: PaletteEntry }) {
       </div>
     );
   }
-  if (isTheme(entry)) {
-    return <ThemeSwatch theme={entry} />;
-  }
   if (isFile(entry)) {
     if (entry.is_image) {
       return <ImageThumb path={entry.path} fallback={entry.name} />;
@@ -1771,32 +1720,6 @@ function EntryIcon({ entry }: { entry: PaletteEntry }) {
     );
   }
   return <div className="row-icon glyph" />;
-}
-
-// Themes are visualised as a tiny swatch — the row icon shows the theme's
-// own bg + accent so the picker is itself a preview.
-function ThemeSwatch({ theme }: { theme: import("../types").Theme }) {
-  const bg = theme.tokens.bg ?? "#1c1c20";
-  const accent = theme.tokens.accent ?? "#7bd88f";
-  return (
-    <div
-      className="row-icon"
-      style={{
-        background: bg,
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
-      }}
-    >
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          background: accent,
-          display: "inline-block",
-        }}
-      />
-    </div>
-  );
 }
 
 // Side-panel preview for the screenshot mode. Shows the currently
@@ -1943,6 +1866,21 @@ const SKILL_BODY_CACHE = new Map<string, string>();
 // Lazy thumbnail loader for image files. Mirrors the AppIcon cache so we
 // only round-trip to Rust once per path; failures stick (no infinite retry).
 const THUMB_CACHE = new Map<string, string | null>();
+
+// The drag plugin requires a PNG preview; non-images get a letter tile like the row fallback.
+function dragIcon(name: string): string {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#555";
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = "#fff";
+  g.font = "bold 32px sans-serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(name.charAt(0).toUpperCase(), 32, 34);
+  return c.toDataURL("image/png");
+}
 
 function ImageThumb({ path, fallback }: { path: string; fallback: string }) {
   const [src, setSrc] = useState<string | null>(() => THUMB_CACHE.get(path) ?? null);

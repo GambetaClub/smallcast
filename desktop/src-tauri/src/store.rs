@@ -204,8 +204,6 @@ mod tests {
             show_snippets_inline: true,
             show_quicklinks_inline: true,
             screenshot_dirs: vec![],
-            theme: "default".into(),
-            bg_image_override: None,
             github_repos: vec![],
             check_updates_on_launch: false,
             backup: crate::types::BackupConfig::default(),

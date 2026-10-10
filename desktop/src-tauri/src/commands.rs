@@ -14,7 +14,6 @@ use crate::system;
 use crate::types::*;
 use crate::themes::{self, Theme};
 use crate::vite_ports::{self, VitePortEntry};
-use crate::window_mgmt;
 use chrono::Utc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -31,30 +30,6 @@ fn new_id() -> String {
     Uuid::now_v7().to_string()
 }
 
-fn slug(name: &str) -> String {
-    let s: String = name
-        .trim()
-        .to_lowercase()
-        .chars()
-        .map(|c| if c.is_alphanumeric() { c } else { '-' })
-        .collect();
-    // collapse dashes
-    let mut out = String::new();
-    let mut last_dash = false;
-    for c in s.chars() {
-        if c == '-' {
-            if !last_dash && !out.is_empty() {
-                out.push('-');
-            }
-            last_dash = true;
-        } else {
-            out.push(c);
-            last_dash = false;
-        }
-    }
-    out.trim_end_matches('-').to_string()
-}
-
 // ---------- Settings ----------
 
 #[derive(serde::Serialize)]
@@ -65,7 +40,6 @@ pub struct Settings {
     pub show_quicklinks_inline: bool,
     pub screenshot_dirs: Vec<String>,
     pub check_updates_on_launch: bool,
-    pub bg_image_override: Option<String>,
     pub github_repos: Vec<String>,
     pub enable_recommendations: bool,
 }
@@ -80,7 +54,6 @@ pub fn get_settings(store: StoreState<'_>) -> Settings {
         show_quicklinks_inline: s.config.show_quicklinks_inline,
         screenshot_dirs: s.config.screenshot_dirs.clone(),
         check_updates_on_launch: s.config.check_updates_on_launch,
-        bg_image_override: s.config.bg_image_override.clone(),
         github_repos: s.config.github_repos.clone(),
         enable_recommendations: s.config.enable_recommendations,
     }
@@ -195,19 +168,6 @@ pub async fn github_list_assigned() -> Result<Vec<crate::github::Issue>, String>
 #[tauri::command]
 pub async fn open_url(url: String) -> Result<(), String> {
     crate::vite_ports::open_url(&url)
-}
-
-#[tauri::command]
-pub fn set_bg_image_override(
-    value: Option<String>,
-    store: StoreState<'_>,
-) -> Result<(), String> {
-    let mut s = store.write();
-    s.config.bg_image_override = value
-        .as_ref()
-        .map(|v| v.trim().to_string())
-        .filter(|v| !v.is_empty());
-    s.save_config().map_err(|e| e.to_string())
 }
 
 // ---------- Backup ----------
@@ -492,92 +452,13 @@ pub fn read_skill(path: String) -> Result<String, String> {
 // ---------- Themes ----------
 
 #[tauri::command]
-pub fn list_themes() -> Vec<Theme> {
-    themes::list_all()
-}
-
-#[tauri::command]
-pub fn get_active_theme(store: StoreState<'_>) -> Theme {
-    let id = store.read().config.theme.clone();
-    themes::load(&id).unwrap_or_else(|| {
-        // Fall back to default if the configured id was deleted out from
-        // under us (e.g. user removed a custom theme file).
-        themes::load("default").expect("default theme always present")
-    })
-}
-
-#[tauri::command]
-pub fn set_active_theme(id: String, store: StoreState<'_>) -> Result<Theme, String> {
-    if themes::load(&id).is_none() {
-        return Err(format!("theme not found: {id}"));
-    }
-    let mut s = store.write();
-    s.config.theme = id.clone();
-    s.save_config().map_err(|e| e.to_string())?;
-    drop(s);
-    themes::load(&id).ok_or_else(|| "theme vanished mid-update".to_string())
-}
-
-#[tauri::command]
-pub fn import_theme(path: String) -> Result<Theme, String> {
-    themes::import_from_path(&path)
-}
-
-#[tauri::command]
-pub fn themes_dir() -> Option<String> {
-    themes::themes_dir().map(|p| p.to_string_lossy().into_owned())
-}
-
-// ---------- Window management ----------
-//
-// Each command hides the palette (so focus returns to the previous app),
-// waits a beat for the OS to follow through, then runs an osascript that
-// repositions the now-frontmost window. The 60ms sleep is the same trick
-// agents.rs uses for terminal activation.
-
-fn run_wm<F: FnOnce() -> Result<(), String>>(app: &AppHandle, op: F) -> Result<(), String> {
-    use tauri::Manager;
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
-    }
-    std::thread::sleep(std::time::Duration::from_millis(60));
-    op()
-}
-
-#[tauri::command]
-pub async fn wm_left_half(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::left_half)
-}
-
-#[tauri::command]
-pub async fn wm_right_half(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::right_half)
-}
-
-#[tauri::command]
-pub async fn wm_top_half(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::top_half)
-}
-
-#[tauri::command]
-pub async fn wm_bottom_half(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::bottom_half)
-}
-
-#[tauri::command]
-pub async fn wm_maximize(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::maximize)
-}
-
-#[tauri::command]
-pub async fn wm_center(app: AppHandle) -> Result<(), String> {
-    run_wm(&app, window_mgmt::center)
+pub fn get_active_theme() -> Theme {
+    themes::default_theme()
 }
 
 // ---------- System quick actions ----------
 //
-// Same hide-then-act pattern as window management: drop the palette so
-// the keystroke / pmset target lands somewhere sensible, then run the
+// Hide-then-act: drop the palette so the keystroke / pmset target lands somewhere sensible, then run the
 // shell-out. Destructive actions (restart/shutdown/logout/empty trash)
 // are gated by a frontend confirm step before they get here.
 
@@ -661,74 +542,6 @@ pub fn analytics_log_path() -> Option<String> {
     analytics::log_path().map(|p| p.to_string_lossy().to_string())
 }
 
-// ---------- Workspace commands ----------
-
-#[derive(serde::Serialize)]
-pub struct WorkspaceList {
-    pub workspaces: Vec<Workspace>,
-    pub active: String,
-}
-
-#[tauri::command]
-pub fn list_workspaces(store: StoreState<'_>) -> Result<WorkspaceList, String> {
-    let s = store.read();
-    Ok(WorkspaceList {
-        workspaces: s.config.workspaces.clone(),
-        active: s.config.active_workspace.clone(),
-    })
-}
-
-#[tauri::command]
-pub fn set_active_workspace(id: String, store: StoreState<'_>) -> Result<(), String> {
-    let mut s = store.write();
-    if !s.config.workspaces.iter().any(|w| w.id == id) {
-        return Err(format!("workspace {id} not found"));
-    }
-    Store::ensure_workspace_dir(&s.root, &id).map_err(|e| e.to_string())?;
-    s.config.active_workspace = id;
-    s.save_config().map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn create_workspace(
-    name: String,
-    color: Option<String>,
-    store: StoreState<'_>,
-) -> Result<Workspace, String> {
-    let mut s = store.write();
-    let id = slug(&name);
-    if id.is_empty() {
-        return Err("name must contain alphanumerics".into());
-    }
-    if s.config.workspaces.iter().any(|w| w.id == id) {
-        return Err(format!("workspace {id} already exists"));
-    }
-    let ws = Workspace { id: id.clone(), name, color };
-    s.config.workspaces.push(ws.clone());
-    Store::ensure_workspace_dir(&s.root, &id).map_err(|e| e.to_string())?;
-    s.save_config().map_err(|e| e.to_string())?;
-    Ok(ws)
-}
-
-#[tauri::command]
-pub fn delete_workspace(id: String, store: StoreState<'_>) -> Result<(), String> {
-    let mut s = store.write();
-    if s.config.workspaces.len() <= 1 {
-        return Err("cannot delete the last workspace".into());
-    }
-    let Some(idx) = s.config.workspaces.iter().position(|w| w.id == id) else {
-        return Err(format!("workspace {id} not found"));
-    };
-    s.config.workspaces.remove(idx);
-    if s.config.active_workspace == id {
-        s.config.active_workspace = s.config.workspaces[0].id.clone();
-    }
-    s.save_config().map_err(|e| e.to_string())?;
-    // We intentionally leave the workspace directory on disk for safety;
-    // the user can remove it manually if they want.
-    Ok(())
-}
-
 // ---------- Item listing ----------
 
 #[tauri::command]
@@ -762,11 +575,9 @@ pub struct CommandEntry {
     /// Normalized search alias. Computed from `name` by stripping any
     /// leading emoji + whitespace and lowercasing. Both Fuse's `keyword`
     /// key (weight 3) and the short-query prefix path consult this — so
-    /// "🎉 Throw Confetti" becomes findable by typing "throw" or
-    /// "confetti", not just exact substring matches that Fuse's bitap
-    /// gets distracted from when the corpus starts with a non-letter.
-    /// Real bug from analytics: queries "Confetti" / "confetti" / "confetto"
-    /// all hit no_results before this field existed.
+    /// a name starting with an emoji stays findable by its first word, not
+    /// just exact substring matches that Fuse's bitap gets distracted from
+    /// when the corpus starts with a non-letter.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keyword: Option<String>,
 }
@@ -798,8 +609,6 @@ pub enum PaletteEntry {
     Clipboard(ClipboardEntry),
     #[allow(dead_code)]
     File(FileEntry),
-    #[allow(dead_code)]
-    Theme(Theme),
     #[allow(dead_code)]
     Skill(SkillEntry),
 }
@@ -890,48 +699,6 @@ fn builtin_commands() -> Vec<CommandEntry> {
             keyword: None,
         },
         CommandEntry {
-            id: "wm.left".into(),
-            name: "Window: Left Half".into(),
-            subtitle: "Resize the frontmost window to the left half".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "wm.right".into(),
-            name: "Window: Right Half".into(),
-            subtitle: "Resize the frontmost window to the right half".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "wm.top".into(),
-            name: "Window: Top Half".into(),
-            subtitle: "Resize the frontmost window to the top half".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "wm.bottom".into(),
-            name: "Window: Bottom Half".into(),
-            subtitle: "Resize the frontmost window to the bottom half".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "wm.maximize".into(),
-            name: "Window: Maximize".into(),
-            subtitle: "Fill the visible desktop".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "wm.center".into(),
-            name: "Window: Center".into(),
-            subtitle: "Two-thirds size, centred".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "themes.switch".into(),
-            name: "Switch Theme".into(),
-            subtitle: "Pick a colour theme — built-in or your own JSON".into(),
-            keyword: None,
-        },
-        CommandEntry {
             id: "system.lock".into(),
             name: "Lock Screen".into(),
             subtitle: "Lock the Mac (⌃⌘Q)".into(),
@@ -970,7 +737,7 @@ fn builtin_commands() -> Vec<CommandEntry> {
         CommandEntry {
             id: "open.preferences".into(),
             name: "Open Preferences".into(),
-            subtitle: "Autostart, workspaces, import".into(),
+            subtitle: "Autostart, search filters, import".into(),
             keyword: None,
         },
         CommandEntry {
@@ -995,24 +762,6 @@ fn builtin_commands() -> Vec<CommandEntry> {
             id: "app.check_updates".into(),
             name: "Check for Updates".into(),
             subtitle: "Ping the release endpoint and install if newer".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "switch.workspace".into(),
-            name: "Switch Workspace".into(),
-            subtitle: "Change the active workspace".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "fx.confetti".into(),
-            name: "🎉 Throw Confetti".into(),
-            subtitle: "Because sometimes you just need a little win".into(),
-            keyword: None,
-        },
-        CommandEntry {
-            id: "fx.lasers".into(),
-            name: "👁️ Fire Eye Lasers".into(),
-            subtitle: "Homelander-style heat-vision burst — pairs with The Boys theme".into(),
             keyword: None,
         },
         CommandEntry {
@@ -1074,17 +823,17 @@ pub async fn list_palette(store: StoreState<'_>) -> Result<Vec<PaletteEntry>, St
             });
             let agents_h = scope.spawn(|| {
                 let t = std::time::Instant::now();
-                let r = agents::list_agents();
+                let r: Vec<agents::AgentEntry> = Vec::new();
                 (r, t.elapsed().as_millis())
             });
             let vite_h = scope.spawn(|| {
                 let t = std::time::Instant::now();
-                let r = vite_ports::list_vite_ports();
+                let r: Vec<vite_ports::VitePortEntry> = Vec::new();
                 (r, t.elapsed().as_millis())
             });
             let docker_h = scope.spawn(|| {
                 let t = std::time::Instant::now();
-                let r = docker_ps::list_docker_containers();
+                let r: Vec<docker_ps::DockerEntry> = Vec::new();
                 (r, t.elapsed().as_millis())
             });
             let (apps_r, apps_ms) = apps_h.join().unwrap();

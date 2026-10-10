@@ -21,6 +21,11 @@ for plist in "${plists[@]}"; do
   plutil -insert LSUIElement -bool YES "$plist" 2>/dev/null \
     || plutil -replace LSUIElement -bool YES "$plist"
   echo "patched LSUIElement: $plist"
+  # The patch invalidates Tauri's signature; a stable identity keeps macOS permissions across rebuilds.
+  if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+    codesign --force --preserve-metadata=entitlements,requirements,flags,runtime \
+      --sign "$APPLE_SIGNING_IDENTITY" "$(dirname "$(dirname "$plist")")"
+  fi
 done
 
 if [ "$found" = "0" ]; then
