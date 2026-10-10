@@ -68,7 +68,7 @@ export const api = {
 
   // Recommender — local logistic regression trained from analytics.jsonl.
   // Inference is fast and synchronous; the model file lives at
-  // ~/Library/Application Support/davidcast/recommender_state.json.
+  // ~/Library/Application Support/smallcast/recommender_state.json.
   recommendTrain: () => invoke<RecommendStatus>("recommend_train"),
   recommendStatus: () => invoke<RecommendStatus>("recommend_status"),
   recommendScore: (inputs: RecommendScoreInput[]) =>

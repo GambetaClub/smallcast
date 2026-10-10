@@ -6,7 +6,7 @@
 //!    `.none` makes ⌃Space appear to draw instantly.
 //!
 //! 2. App Nap opt-out. macOS aggressively throttles "background" apps —
-//!    davidcast as a menu-bar accessory with a hidden window qualifies.
+//!    smallcast as a menu-bar accessory with a hidden window qualifies.
 //!    After a few minutes of idle, the next ⌃Space pays a wake-up tax
 //!    (CPU clock-up, possibly page faults) that we've measured at 11s in
 //!    pathological cases. Calling NSProcessInfo.beginActivity with the
@@ -75,7 +75,7 @@ pub unsafe fn make_visible_over_fullscreen(ns_window: *mut std::ffi::c_void) {
     window.setHidesOnDeactivate(false);
 }
 
-/// Bring davidcast (an LSUIElement / accessory app) to the front so the
+/// Bring smallcast (an LSUIElement / accessory app) to the front so the
 /// palette can take key focus inside another app's fullscreen Space.
 /// Without this, `NSWindow.makeKeyAndOrderFront` (what Tauri's
 /// `set_focus` ends up calling) is allowed to *show* the window over
@@ -114,7 +114,7 @@ pub fn activate_app() {
 /// `canBecomeMainWindow` return NO for borderless panels, which is why
 /// the first NSPanel attempt could float over fullscreen but couldn't
 /// receive keyboard input (typing did nothing, Esc did nothing). We
-/// register a runtime subclass `DavidcastPanel` that overrides both to
+/// register a runtime subclass `SmallcastPanel` that overrides both to
 /// return YES, then swap the existing window's `isa` to it. NSPanel
 /// adds no ivars to NSWindow, so a class swap is layout-safe.
 ///
@@ -127,7 +127,7 @@ pub unsafe fn make_panel(ns_window: *mut std::ffi::c_void) {
     if ns_window.is_null() {
         return;
     }
-    let cls = davidcast_panel_class();
+    let cls = smallcast_panel_class();
     let obj: &AnyObject = unsafe { &*(ns_window as *const AnyObject) };
     unsafe { AnyObject::set_class(obj, cls) };
     let window: &NSWindow = unsafe { &*(ns_window as *const NSWindow) };
@@ -143,16 +143,16 @@ extern "C" fn yes_bool(_this: &NSObject, _cmd: Sel) -> Bool {
 /// become key + main. Required because borderless NSPanels return NO
 /// from those defaults — the panel floats over fullscreen but can't
 /// take keyboard input.
-fn davidcast_panel_class() -> &'static AnyClass {
+fn smallcast_panel_class() -> &'static AnyClass {
     static CLASS: OnceLock<&'static AnyClass> = OnceLock::new();
     CLASS.get_or_init(|| {
         let panel = AnyClass::get(CStr::from_bytes_with_nul(b"NSPanel\0").unwrap())
             .expect("NSPanel class must exist on macOS");
         let mut builder = ClassBuilder::new(
-            CStr::from_bytes_with_nul(b"DavidcastPanel\0").unwrap(),
+            CStr::from_bytes_with_nul(b"SmallcastPanel\0").unwrap(),
             panel,
         )
-        .expect("DavidcastPanel class registration failed");
+        .expect("SmallcastPanel class registration failed");
         unsafe {
             builder.add_method(
                 sel!(canBecomeKeyWindow),
@@ -202,7 +202,7 @@ pub fn opt_out_of_app_nap() -> bool {
         return false;
     }
     let info = NSProcessInfo::processInfo();
-    let reason = NSString::from_str("davidcast palette responsiveness");
+    let reason = NSString::from_str("smallcast palette responsiveness");
     // UserInitiated = active user-driven work. Combined with
     // LatencyCritical so the OS keeps timers + I/O at full speed.
     // We allow idle system sleep — no reason to keep the laptop awake.

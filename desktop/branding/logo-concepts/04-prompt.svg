@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="davidcast — prompt">
-  <title>davidcast — prompt</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="smallcast — prompt">
+  <title>smallcast — prompt</title>
   <path d="M 50 65 L 95 100 L 50 135" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
   <line x1="110" y1="135" x2="160" y2="135" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
 </svg>

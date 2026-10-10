@@ -17,7 +17,7 @@ export function Preferences({ onClose, onError }: Props) {
   // canonical Config so it stays per-machine.
   const [perfPillEnabled, setPerfPillEnabled] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("davidcast.perf_pill") !== "0";
+      return localStorage.getItem("smallcast.perf_pill") !== "0";
     } catch {
       return true;
     }
@@ -100,7 +100,7 @@ export function Preferences({ onClose, onError }: Props) {
               <div className="label">
                 <div className="label-title">Launch at login</div>
                 <div className="label-sub">
-                  Start davidcast automatically when you sign in.
+                  Start smallcast automatically when you sign in.
                 </div>
               </div>
               <div
@@ -123,7 +123,7 @@ export function Preferences({ onClose, onError }: Props) {
               <div className="label">
                 <div className="label-title">Check for updates on launch</div>
                 <div className="label-sub">
-                  Pings the GitHub Releases endpoint each time davidcast
+                  Pings the GitHub Releases endpoint each time smallcast
                   starts. You can also run{" "}
                   <code>app.check_updates</code> from the palette anytime.
                 </div>
@@ -214,7 +214,7 @@ export function Preferences({ onClose, onError }: Props) {
                   setPerfPillEnabled(next);
                   try {
                     localStorage.setItem(
-                      "davidcast.perf_pill",
+                      "smallcast.perf_pill",
                       next ? "1" : "0"
                     );
                   } catch {
@@ -302,7 +302,7 @@ export function Preferences({ onClose, onError }: Props) {
           <ImportSection onError={onError} />
 
           <div className="prefs-meta">
-            Store: <code>~/Library/Application Support/davidcast/</code>
+            Store: <code>~/Library/Application Support/smallcast/</code>
           </div>
       </div>
     </Screen>
@@ -653,10 +653,10 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
           <div className="label-title">Enable git backup</div>
           <div className="label-sub">
             Pushes the contents of{" "}
-            <code>~/Library/Application Support/davidcast/</code> to a git
+            <code>~/Library/Application Support/smallcast/</code> to a git
             remote you control. Auth piggybacks on whatever lets you{" "}
             <code>git push</code> from terminal — SSH key, gh CLI, credential
-            helper. davidcast never stores tokens.
+            helper. smallcast never stores tokens.
           </div>
         </div>
         <div
@@ -671,14 +671,14 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
         <div className="label">
           <div className="label-title">Remote URL</div>
           <div className="label-sub">
-            e.g. <code>git@github.com:you/davidcast-backup.git</code>. Create
-            an empty repo first; davidcast does the initial push for you.
+            e.g. <code>git@github.com:you/smallcast-backup.git</code>. Create
+            an empty repo first; smallcast does the initial push for you.
           </div>
         </div>
         <input
           className="prefs-input"
           defaultValue={settings.remote}
-          placeholder="git@github.com:you/davidcast-backup.git"
+          placeholder="git@github.com:you/smallcast-backup.git"
           onBlur={(e) => saveRemote(e.target.value)}
         />
       </div>

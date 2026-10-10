@@ -39,11 +39,11 @@ impl Store {
     }
 
     pub fn root_dir() -> Result<PathBuf, StoreError> {
-        // macOS: ~/Library/Application Support/davidcast
-        // Linux: ~/.local/share/davidcast
-        // Windows: %APPDATA%\davidcast
+        // macOS: ~/Library/Application Support/smallcast
+        // Linux: ~/.local/share/smallcast
+        // Windows: %APPDATA%\smallcast
         let base = dirs::data_dir().ok_or(StoreError::NoDataDir)?;
-        Ok(base.join("davidcast"))
+        Ok(base.join("smallcast"))
     }
 
     pub fn ensure_workspace_dir(root: &Path, id: &str) -> Result<(), StoreError> {

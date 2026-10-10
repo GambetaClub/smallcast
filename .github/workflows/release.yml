@@ -49,7 +49,7 @@ jobs:
         run: |
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY}" ]; then
             echo "::error::TAURI_SIGNING_PRIVATE_KEY secret is not set — auto-updater can't sign this build."
-            echo "::error::Run \`gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/davidcast.key\` once."
+            echo "::error::Run \`gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/smallcast.key\` once."
             exit 1
           fi
 
@@ -59,7 +59,7 @@ jobs:
 
       # `pnpm tauri build` is wrapped (desktop/scripts/tauri.sh) — it
       # plutil-inserts LSUIElement=true into every produced
-      # davidcast.app/Contents/Info.plist after the bundle is generated,
+      # smallcast.app/Contents/Info.plist after the bundle is generated,
       # so the .app.tar.gz signature below is over the patched bundle.
       # Without LSUIElement, macOS treats the bundle as a regular dock
       # app and the palette can't float over another app's fullscreen
@@ -81,11 +81,11 @@ jobs:
           aarch64_dir="desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
           x86_64_dir="desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos"
 
-          aarch64_tar="davidcast-${GITHUB_REF_NAME}-aarch64.app.tar.gz"
-          x86_64_tar="davidcast-${GITHUB_REF_NAME}-x86_64.app.tar.gz"
+          aarch64_tar="smallcast-${GITHUB_REF_NAME}-aarch64.app.tar.gz"
+          x86_64_tar="smallcast-${GITHUB_REF_NAME}-x86_64.app.tar.gz"
 
-          (cd "$aarch64_dir" && tar -czf "$GITHUB_WORKSPACE/$aarch64_tar" davidcast.app)
-          (cd "$x86_64_dir"  && tar -czf "$GITHUB_WORKSPACE/$x86_64_tar"  davidcast.app)
+          (cd "$aarch64_dir" && tar -czf "$GITHUB_WORKSPACE/$aarch64_tar" smallcast.app)
+          (cd "$x86_64_dir"  && tar -czf "$GITHUB_WORKSPACE/$x86_64_tar"  smallcast.app)
 
           # Sign the renamed tarballs with our minisign key. `tauri signer sign`
           # writes <file>.sig next to the input.
@@ -107,7 +107,7 @@ jobs:
             --arg aarch64_url "$base/$aarch64_tar" \
             --arg x86_64_sig "$x86_64_sig" \
             --arg x86_64_url "$base/$x86_64_tar" \
-            --arg notes "davidcast $GITHUB_REF_NAME" \
+            --arg notes "smallcast $GITHUB_REF_NAME" \
             '{
               version: $version,
               notes: $notes,
@@ -140,13 +140,13 @@ jobs:
             echo
             echo "## Install"
             echo
-            echo "- **Apple Silicon:** download \`davidcast-${GITHUB_REF_NAME}-aarch64.app.tar.gz\`, untar, drag \`davidcast.app\` into \`/Applications\`."
-            echo "- **Intel:** download \`davidcast-${GITHUB_REF_NAME}-x86_64.app.tar.gz\`, untar, drag \`davidcast.app\` into \`/Applications\`."
+            echo "- **Apple Silicon:** download \`smallcast-${GITHUB_REF_NAME}-aarch64.app.tar.gz\`, untar, drag \`smallcast.app\` into \`/Applications\`."
+            echo "- **Intel:** download \`smallcast-${GITHUB_REF_NAME}-x86_64.app.tar.gz\`, untar, drag \`smallcast.app\` into \`/Applications\`."
             echo "- The build is unsigned (no Apple Developer cert). First launch: right-click the \`.app\` → **Open** → confirm."
             echo
             echo "## Auto-update"
             echo
-            echo "Already on davidcast? You don't need to download anything — open the app and the updater will offer this version on launch."
+            echo "Already on smallcast? You don't need to download anything — open the app and the updater will offer this version on launch."
           } > /tmp/notes.md
 
       - name: Create release

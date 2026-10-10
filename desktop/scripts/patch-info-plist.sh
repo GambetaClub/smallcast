@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Patch LSUIElement=true into every davidcast.app Info.plist under
+# Patch LSUIElement=true into every smallcast.app Info.plist under
 # src-tauri/target/. Without this key the bundle is treated as a regular
 # dock app — even with NSWindow level=screensaver and CanJoinAllSpaces,
 # macOS still won't float the palette over another app's fullscreen Space.
@@ -10,8 +10,8 @@ cd "$(dirname "$0")/.."
 
 shopt -s nullglob
 plists=(
-  src-tauri/target/release/bundle/macos/davidcast.app/Contents/Info.plist
-  src-tauri/target/*-apple-darwin/release/bundle/macos/davidcast.app/Contents/Info.plist
+  src-tauri/target/release/bundle/macos/smallcast.app/Contents/Info.plist
+  src-tauri/target/*-apple-darwin/release/bundle/macos/smallcast.app/Contents/Info.plist
 )
 
 found=0
@@ -29,5 +29,5 @@ for plist in "${plists[@]}"; do
 done
 
 if [ "$found" = "0" ]; then
-  echo "patch-info-plist.sh: no davidcast.app bundles found under target/ — nothing to patch" >&2
+  echo "patch-info-plist.sh: no smallcast.app bundles found under target/ — nothing to patch" >&2
 fi

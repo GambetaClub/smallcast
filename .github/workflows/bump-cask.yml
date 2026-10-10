@@ -1,13 +1,13 @@
 name: Bump Homebrew cask
 
 # Fires after the Release workflow publishes a v*.*.* GitHub release.
-# Computes shasums of the new tarballs, rewrites Casks/davidcast.rb in
+# Computes shasums of the new tarballs, rewrites Casks/smallcast.rb in
 # the homebrew-tap repo, and pushes — so `brew install --cask
-# davidbroza/tap/davidcast` always points at the latest version
+# GambetaClub/tap/smallcast` always points at the latest version
 # without any manual cask edits.
 #
 # Requires a `TAP_GITHUB_TOKEN` secret on this repo: a fine-grained
-# PAT scoped to davidbroza/homebrew-tap with Contents: Read and write.
+# PAT scoped to GambetaClub/homebrew-tap with Contents: Read and write.
 # See README §Auto-update for the one-time setup.
 
 on:
@@ -25,7 +25,7 @@ jobs:
       - name: Checkout tap
         uses: actions/checkout@v4
         with:
-          repository: davidbroza/homebrew-tap
+          repository: GambetaClub/homebrew-tap
           token: ${{ secrets.TAP_GITHUB_TOKEN }}
           path: tap
 
@@ -36,9 +36,9 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${TAG#v}"
-          BASE="https://github.com/davidbroza/davidcast/releases/download/${TAG}"
-          aarch64_sha=$(curl -fsSL "$BASE/davidcast-${TAG}-aarch64.app.tar.gz" | shasum -a 256 | awk '{print $1}')
-          x86_64_sha=$(curl -fsSL  "$BASE/davidcast-${TAG}-x86_64.app.tar.gz"  | shasum -a 256 | awk '{print $1}')
+          BASE="https://github.com/GambetaClub/smallcast/releases/download/${TAG}"
+          aarch64_sha=$(curl -fsSL "$BASE/smallcast-${TAG}-aarch64.app.tar.gz" | shasum -a 256 | awk '{print $1}')
+          x86_64_sha=$(curl -fsSL  "$BASE/smallcast-${TAG}-x86_64.app.tar.gz"  | shasum -a 256 | awk '{print $1}')
           echo "version=$VERSION"          >> "$GITHUB_OUTPUT"
           echo "aarch64_sha=$aarch64_sha"  >> "$GITHUB_OUTPUT"
           echo "x86_64_sha=$x86_64_sha"    >> "$GITHUB_OUTPUT"
@@ -49,33 +49,33 @@ jobs:
           AARCH64_SHA: ${{ steps.shas.outputs.aarch64_sha }}
           X86_64_SHA:  ${{ steps.shas.outputs.x86_64_sha }}
         run: |
-          cat > tap/Casks/davidcast.rb <<RUBY
-          cask "davidcast" do
+          cat > tap/Casks/smallcast.rb <<RUBY
+          cask "smallcast" do
             version "${VERSION}"
 
             on_arm do
               sha256 "${AARCH64_SHA}"
-              url "https://github.com/davidbroza/davidcast/releases/download/v#{version}/davidcast-v#{version}-aarch64.app.tar.gz"
+              url "https://github.com/GambetaClub/smallcast/releases/download/v#{version}/smallcast-v#{version}-aarch64.app.tar.gz"
             end
             on_intel do
               sha256 "${X86_64_SHA}"
-              url "https://github.com/davidbroza/davidcast/releases/download/v#{version}/davidcast-v#{version}-x86_64.app.tar.gz"
+              url "https://github.com/GambetaClub/smallcast/releases/download/v#{version}/smallcast-v#{version}-x86_64.app.tar.gz"
             end
 
-            name "davidcast"
+            name "smallcast"
             desc "Keyboard-first launcher for macOS"
-            homepage "https://github.com/davidbroza/davidcast"
+            homepage "https://github.com/GambetaClub/smallcast"
 
             auto_updates true
             depends_on macos: ">= :ventura"
 
-            app "davidcast.app"
+            app "smallcast.app"
 
             zap trash: [
-              "~/Library/Application Support/davidcast",
-              "~/Library/Logs/davidcast",
-              "~/Library/Preferences/com.davidcast.app.plist",
-              "~/Library/Saved Application State/com.davidcast.app.savedState",
+              "~/Library/Application Support/smallcast",
+              "~/Library/Logs/smallcast",
+              "~/Library/Preferences/com.smallcast.app.plist",
+              "~/Library/Saved Application State/com.smallcast.app.savedState",
             ]
           end
           RUBY
@@ -85,12 +85,12 @@ jobs:
         env:
           VERSION: ${{ steps.shas.outputs.version }}
         run: |
-          git config user.name  "davidcast-bot"
-          git config user.email "davidcast-bot@users.noreply.github.com"
-          if git diff --quiet -- Casks/davidcast.rb; then
+          git config user.name  "smallcast-bot"
+          git config user.email "smallcast-bot@users.noreply.github.com"
+          if git diff --quiet -- Casks/smallcast.rb; then
             echo "Cask already at this version, nothing to do."
             exit 0
           fi
-          git add Casks/davidcast.rb
-          git commit -m "davidcast ${VERSION}"
+          git add Casks/smallcast.rb
+          git commit -m "smallcast ${VERSION}"
           git push

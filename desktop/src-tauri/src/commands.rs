@@ -743,7 +743,7 @@ fn builtin_commands() -> Vec<CommandEntry> {
         CommandEntry {
             id: "help.show".into(),
             name: "Show Help".into(),
-            subtitle: "Every davidcast feature, command, and shortcut".into(),
+            subtitle: "Every smallcast feature, command, and shortcut".into(),
             keyword: None,
         },
         CommandEntry {
@@ -883,7 +883,7 @@ pub async fn list_palette(store: StoreState<'_>) -> Result<Vec<PaletteEntry>, St
         out.push(PaletteEntry::App(a));
     }
     eprintln!(
-        "[davidcast] list_palette {}ms (store={}ms {}; total_entries={})",
+        "[smallcast] list_palette {}ms (store={}ms {}; total_entries={})",
         total_t0.elapsed().as_millis(),
         store_ms,
         breakdown,

@@ -76,7 +76,7 @@ fn paste_at_cursor() -> Result<(), String> {
     let out = crate::proc::output_with_timeout(cmd, std::time::Duration::from_secs(5))?;
     if !out.status.success() {
         return Err(
-            "paste failed — grant Accessibility permission to davidcast in System Settings"
+            "paste failed — grant Accessibility permission to smallcast in System Settings"
                 .into(),
         );
     }

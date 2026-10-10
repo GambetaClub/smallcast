@@ -1,8 +1,8 @@
 {
-  "name": "davidcast-marketing",
+  "name": "smallcast-marketing",
   "private": true,
   "version": "0.1.0",
-  "description": "Marketing assets (Remotion videos) for davidcast. Synthetic data only.",
+  "description": "Marketing assets (Remotion videos) for smallcast. Synthetic data only.",
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render Promo out/promo.mp4",

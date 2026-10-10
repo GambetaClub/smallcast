@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="davidcast tray icon">
-  <title>davidcast tray icon (template)</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="smallcast tray icon">
+  <title>smallcast tray icon (template)</title>
   <g transform="translate(0 0) scale(0.32)" stroke="#000000" stroke-linecap="round" fill="none">
     <circle cx="60" cy="100" r="18" fill="#000000" stroke="none"/>
     <path d="M 92 68 Q 125 100 92 132" stroke-width="14"/>

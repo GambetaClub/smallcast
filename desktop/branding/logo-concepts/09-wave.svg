@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="davidcast — wave">
-  <title>davidcast — wave</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="smallcast — wave">
+  <title>smallcast — wave</title>
   <path d="M 25 100 Q 55 55 85 100 T 145 100" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
   <circle cx="170" cy="100" r="14" fill="currentColor"/>
 </svg>

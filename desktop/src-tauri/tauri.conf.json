@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "davidcast",
+  "productName": "smallcast",
   "version": "0.3.0",
-  "identifier": "com.davidcast.app",
+  "identifier": "com.smallcast.app",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "davidcast",
+        "title": "smallcast",
         "width": 760,
         "height": 500,
         "visible": false,

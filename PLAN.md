@@ -1,4 +1,4 @@
-# davidcast — Plan
+# smallcast — Plan
 
 A personal launcher with a global hotkey, focused on **snippets** and **quicklinks**. Local-first, syncable across devices via Cloudflare. Designed so an MCP server and Chrome extension can plug into the same store later.
 
@@ -8,7 +8,7 @@ A personal launcher with a global hotkey, focused on **snippets** and **quicklin
 1. macOS desktop app (Tauri) with global hotkey palette.
 2. Two item types: **snippets** and **quicklinks**.
 3. **Workspaces** from day 1 — items belong to a workspace (e.g. `personal`, `work`), user switches between them seamlessly.
-4. Local JSON store in `~/Library/Application Support/davidcast/`.
+4. Local JSON store in `~/Library/Application Support/smallcast/`.
 5. Data model designed for sync — stable IDs, `updated_at`, tombstones — even though the sync engine isn't wired up yet.
 
 ### Phase 2
@@ -27,7 +27,7 @@ Explicit non-goals: extensions/plugins, AI chat, clipboard history, window manag
 ```
 ┌─────────────────────────────────────┐
 │ ~/Library/Application Support/       │
-│  davidcast/                          │
+│  smallcast/                          │
 │    config.json                       │    { active, workspaces[] }
 │    workspaces/                       │
 │      personal/                       │
@@ -114,7 +114,7 @@ Storage format is plain JSON (not SQLite) — hand-editable, diffable, and makes
 ## Repo layout
 
 ```
-davidcast/
+smallcast/
   PLAN.md
   README.md
   .gitignore
@@ -142,10 +142,10 @@ Keeping all surfaces in one repo while they're small — easier to change data m
 
 ## Decisions locked
 
-- **Name:** davidcast.
+- **Name:** smallcast.
 - **Stack:** Tauri (Rust + React+TS).
 - **Global hotkey default:** `⌥+Space`. Conflicts with Raycast if installed — user rebinds one of them.
-- **Local storage:** JSON files in `~/Library/Application Support/davidcast/store/`.
+- **Local storage:** JSON files in `~/Library/Application Support/smallcast/store/`.
 - **Cloud target:** Cloudflare Worker + KV or D1. Chosen during phase 2 build — KV is simpler, D1 is better if the item count grows or we want server-side queries.
 - **iCloud:** phase 3 additive option. Not sync-competitive with Cloudflare but zero-infra for Mac-to-Mac.
 - **MCP:** phase 3. Will live in `mcp/` and go through the desktop app's HTTP API, not direct file access.

@@ -87,7 +87,7 @@ fn find_icns(app_path: &str) -> Option<PathBuf> {
 }
 
 fn cache_dir() -> Option<PathBuf> {
-    dirs::cache_dir().map(|d| d.join("davidcast/icons"))
+    dirs::cache_dir().map(|d| d.join("smallcast/icons"))
 }
 
 // FNV-1a 64-bit — non-crypto, just a stable cache key per path.

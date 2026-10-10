@@ -5,7 +5,7 @@ type Props = {
   onClose: () => void;
 };
 
-// One source of truth for what davidcast can do. When a new feature
+// One source of truth for what smallcast can do. When a new feature
 // lands, add it here AND update the matching section in CLAUDE.md so
 // the agent reading the repo knows to keep this in sync.
 type Feature = {
@@ -213,7 +213,7 @@ const GROUPS: Group[] = [
 
 export function Help({ onClose }: Props) {
   return (
-    <Screen kind="help" title="Help · davidcast" onClose={onClose}>
+    <Screen kind="help" title="Help · smallcast" onClose={onClose}>
       <div className="help">
           {GROUPS.map((group) => (
             <section key={group.title} className="help-group">
@@ -238,7 +238,7 @@ export function Help({ onClose }: Props) {
             </section>
           ))}
           <div className="help-footer">
-            davidcast — local-first launcher · ⌘ Space toggles the palette
+            smallcast — local-first launcher · ⌘ Space toggles the palette
           </div>
         </div>
     </Screen>

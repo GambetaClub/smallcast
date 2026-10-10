@@ -405,7 +405,7 @@ const Intro: React.FC = () => {
           fontFamily: FONT,
         }}
       >
-        davidcast
+        smallcast
       </div>
     </AbsoluteFill>
   );
@@ -608,7 +608,7 @@ const ThemedPalette: React.FC<{ theme: ThemeTokens }> = ({ theme }) => {
             letterSpacing: -0.2,
           }}
         >
-          Search davidcast…
+          Search smallcast…
         </span>
       </div>
       {rows.map((r, i) => {
@@ -780,7 +780,7 @@ const Outro: React.FC = () => {
           opacity: fadeIn,
         }}
       >
-        davidcast
+        smallcast
       </div>
       <div
         style={{

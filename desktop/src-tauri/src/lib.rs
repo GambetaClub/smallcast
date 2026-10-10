@@ -39,7 +39,7 @@ pub fn run() {
         _single_instance.as_ref().map(|f| f.try_lock()),
         Some(Err(std::fs::TryLockError::WouldBlock))
     ) {
-        eprintln!("davidcast is already running; quit it first");
+        eprintln!("smallcast is already running; quit it first");
         return;
     }
     tauri::Builder::default()
@@ -86,7 +86,7 @@ pub fn run() {
             }
 
             // Load the store.
-            let store = store::Store::load().expect("failed to load davidcast store");
+            let store = store::Store::load().expect("failed to load smallcast store");
             app.manage(RwLock::new(store));
 
             // Register global hotkeys: palette + clipboard.
@@ -245,10 +245,10 @@ pub fn run() {
             });
 
             // Build the menu-bar tray.
-            let show_i = MenuItem::with_id(app, "show", "Open davidcast", true, Some("Ctrl+Space"))?;
+            let show_i = MenuItem::with_id(app, "show", "Open smallcast", true, Some("Ctrl+Space"))?;
             let prefs_i = MenuItem::with_id(app, "prefs", "Preferences…", true, Some("Cmd+,"))?;
             let sep_i = tauri::menu::PredefinedMenuItem::separator(app)?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit davidcast", true, Some("Cmd+Q"))?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit smallcast", true, Some("Cmd+Q"))?;
             let menu = Menu::with_items(app, &[&show_i, &prefs_i, &sep_i, &quit_i])?;
 
             let tray_icon = tauri::image::Image::from_bytes(include_bytes!(
@@ -384,7 +384,7 @@ pub fn run() {
 
 /// Two copies both answer the hotkey and steal focus from each other.
 fn instance_lock() -> Option<std::fs::File> {
-    let dir = dirs::data_dir()?.join("davidcast");
+    let dir = dirs::data_dir()?.join("smallcast");
     std::fs::create_dir_all(&dir).ok()?;
     std::fs::File::create(dir.join("instance.lock")).ok()
 }

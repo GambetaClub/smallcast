@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 /// Append-only JSONL log of palette interactions, written next to the JSON
-/// store at `~/Library/Application Support/davidcast/analytics.jsonl`.
+/// store at `~/Library/Application Support/smallcast/analytics.jsonl`.
 ///
 /// One line per event. The frontend decides what to record; this module is
 /// just the file sink. Local-only — nothing is ever sent off the box.

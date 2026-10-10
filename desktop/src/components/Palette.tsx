@@ -46,7 +46,7 @@ function recommenderKey(e: PaletteEntry): string {
 // Recents — the last few items the user actually picked, persisted to
 // localStorage so they survive across launches. Drives the empty-query
 // suggestion list.
-const RECENTS_KEY = "davidcast.recents";
+const RECENTS_KEY = "smallcast.recents";
 const MAX_RECENTS = 24;
 
 // Hard cap on rows handed to the renderer. Past ~80 you can't see them
@@ -140,7 +140,7 @@ function parseFileQuery(input: string): FileSearchOpts {
 // out of the canonical Config so it doesn't sync via backup).
 function isPerfPillEnabled(): boolean {
   try {
-    return localStorage.getItem("davidcast.perf_pill") !== "0";
+    return localStorage.getItem("smallcast.perf_pill") !== "0";
   } catch {
     return true;
   }
@@ -572,7 +572,7 @@ export function Palette({
         const inputMs = lastInputPaintRef.current ?? listMs;
         const text = `in ${inputMs.toFixed(0)} · list ${listMs.toFixed(0)} · ${resultCount}`;
         // eslint-disable-next-line no-console
-        console.log(`[davidcast perf] ${text}${wasFirst ? " [FIRST]" : ""}`);
+        console.log(`[smallcast perf] ${text}${wasFirst ? " [FIRST]" : ""}`);
         setPerfText(text);
         window.setTimeout(() => setPerfText(null), 1200);
         // Defer the analytics IPC to idle time. invoke() does a synchronous
@@ -1216,7 +1216,7 @@ export function Palette({
     >
       <div className="topbar">
         <div className="topbar-spacer" />
-        <span className="topbar-hint">davidcast</span>
+        <span className="topbar-hint">smallcast</span>
       </div>
 
       <div className="search">

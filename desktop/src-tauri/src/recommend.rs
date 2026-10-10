@@ -25,7 +25,7 @@
 //!
 //! No network, no telemetry, no model upload — same posture as
 //! `analytics.rs`. State lives at
-//! `~/Library/Application Support/davidcast/recommender_state.json`.
+//! `~/Library/Application Support/smallcast/recommender_state.json`.
 
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use serde::{Deserialize, Serialize};
@@ -937,7 +937,7 @@ mod tests {
 
         println!();
         println!("================================================================");
-        println!(" davidcast recommender — end-to-end demo");
+        println!(" smallcast recommender — end-to-end demo");
         println!("================================================================");
         println!();
         println!("Synthetic log:");

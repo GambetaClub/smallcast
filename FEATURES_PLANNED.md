@@ -113,7 +113,7 @@ Type a word and see matching Obsidian notes in the palette. Enter opens the note
   - `first_heading` (first `#` line, optional)
   - First ~400 chars of body (for search, not display)
   - `mtime` — for incremental re-indexing
-- Cache on disk in `~/Library/Application Support/davidcast/cache/obsidian-<vault>.json`. Re-read on startup; refresh incrementally on mtime change.
+- Cache on disk in `~/Library/Application Support/smallcast/cache/obsidian-<vault>.json`. Re-read on startup; refresh incrementally on mtime change.
 
 **Palette entry:**
 
@@ -133,7 +133,7 @@ Fuse.js keys add `title` (weight 3) and `snippet` (weight 0.5).
 
 ### Option B — Obsidian MCP (later, when phase 3 MCP client lands)
 
-When davidcast grows an MCP client (phase 3 work), wire in a community Obsidian MCP server (e.g. `mcp-obsidian`) as the search backend. Benefits:
+When smallcast grows an MCP client (phase 3 work), wire in a community Obsidian MCP server (e.g. `mcp-obsidian`) as the search backend. Benefits:
 
 - Live index (Obsidian already has one, no re-indexing from our side).
 - Semantic search via Obsidian plugins if the server exposes it.

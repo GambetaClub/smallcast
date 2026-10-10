@@ -3,9 +3,9 @@ default: install
 # Path to the auto-updater signing key. createUpdaterArtifacts is on, so
 # every release build (local OR CI) needs this. Override on the command
 # line if you keep the key elsewhere: `just SIGNING_KEY=~/keys/dc.key install`.
-SIGNING_KEY := env_var_or_default("TAURI_SIGNING_PRIVATE_KEY_PATH", "~/.tauri/davidcast.key")
+SIGNING_KEY := env_var_or_default("TAURI_SIGNING_PRIVATE_KEY_PATH", "~/.tauri/smallcast.key")
 
-# Build davidcast.app and install it to /Applications.
+# Build smallcast.app and install it to /Applications.
 install:
     @command -v pnpm  >/dev/null || { echo "pnpm required — brew install pnpm"; exit 1; }
     @command -v cargo >/dev/null || { echo "Rust required — https://rustup.rs"; exit 1; }
@@ -21,13 +21,13 @@ install:
     # another app's fullscreen Space.
     cd desktop && TAURI_SIGNING_PRIVATE_KEY="$(cat {{SIGNING_KEY}})" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" pnpm tauri build
     # The bundled binary is named `desktop` (CFBundleExecutable), so
-    # `killall davidcast` is a no-op; match by full path instead.
-    -pkill -f /Applications/davidcast.app 2>/dev/null || true
-    rm -rf /Applications/davidcast.app
-    cp -R desktop/src-tauri/target/release/bundle/macos/davidcast.app /Applications/
-    xattr -cr /Applications/davidcast.app
+    # `killall smallcast` is a no-op; match by full path instead.
+    -pkill -f /Applications/smallcast.app 2>/dev/null || true
+    rm -rf /Applications/smallcast.app
+    cp -R desktop/src-tauri/target/release/bundle/macos/smallcast.app /Applications/
+    xattr -cr /Applications/smallcast.app
     @echo ""
-    @echo "✓ installed: /Applications/davidcast.app"
+    @echo "✓ installed: /Applications/smallcast.app"
     @echo "  open it once to grant Accessibility, then use ⌃ Space anywhere."
 
 # Vite + Rust hot-reload dev session.
@@ -41,13 +41,13 @@ build:
     cd desktop && pnpm install --frozen-lockfile
     cd desktop && TAURI_SIGNING_PRIVATE_KEY="$(cat {{SIGNING_KEY}})" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" pnpm tauri build
 
-# Remove davidcast from /Applications. Store at ~/Library/Application Support/davidcast/ is kept.
+# Remove smallcast from /Applications. Store at ~/Library/Application Support/smallcast/ is kept.
 uninstall:
     # The bundled binary is named `desktop` (CFBundleExecutable), so
-    # `killall davidcast` is a no-op; match by full path instead.
-    -pkill -f /Applications/davidcast.app 2>/dev/null || true
-    rm -rf /Applications/davidcast.app
-    @echo "✓ removed /Applications/davidcast.app"
+    # `killall smallcast` is a no-op; match by full path instead.
+    -pkill -f /Applications/smallcast.app 2>/dev/null || true
+    rm -rf /Applications/smallcast.app
+    @echo "✓ removed /Applications/smallcast.app"
 
 # Render the promo MP4 (1920x1080, 12s) to marketing/out/promo.mp4. All-synthetic data.
 promo:

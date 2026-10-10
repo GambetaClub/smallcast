@@ -41,7 +41,7 @@ fn state() -> &'static Mutex<State> {
 }
 
 pub fn store_path() -> Option<PathBuf> {
-    dirs::data_dir().map(|d| d.join("davidcast/clipboard.json"))
+    dirs::data_dir().map(|d| d.join("smallcast/clipboard.json"))
 }
 
 fn load_from_disk() -> Option<Vec<ClipboardEntry>> {

@@ -20,7 +20,7 @@ fn osascript(script: &str) -> Result<(), String> {
 }
 
 /// Lock the screen. Sends ⌃⌘Q via System Events — the system shortcut
-/// macOS has bound to "Lock Screen" since Mojave. Inherits davidcast's
+/// macOS has bound to "Lock Screen" since Mojave. Inherits smallcast's
 /// Accessibility permission (same one the window-management commands use).
 pub fn lock_screen() -> Result<(), String> {
     osascript(

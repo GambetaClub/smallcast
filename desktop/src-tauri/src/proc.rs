@@ -1,6 +1,6 @@
 //! Timeout-bounded subprocess execution.
 //!
-//! davidcast shells out to `docker`, `ps`, `lsof`, and `git`. Any of these
+//! smallcast shells out to `docker`, `ps`, `lsof`, and `git`. Any of these
 //! can hang indefinitely: `docker ps` blocks when the daemon is starting,
 //! shutting down, or wedged; `lsof` stalls on stale network mounts; `git`
 //! push/pull stalls on an unreachable remote. A bare `Command::output()`

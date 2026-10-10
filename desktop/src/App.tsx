@@ -13,7 +13,7 @@ import { Stats } from "./components/Stats";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { stableEntryKey, type Item, type PaletteEntry, type Theme } from "./types";
 
-const ENTRIES_CACHE_KEY = "davidcast.entries.cache.v1";
+const ENTRIES_CACHE_KEY = "smallcast.entries.cache.v1";
 
 /// Identity-only fingerprint of the palette list. Two refreshes returning
 /// the same set of items in the same order produce the same hash even if

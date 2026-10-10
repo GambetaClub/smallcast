@@ -56,7 +56,7 @@ export function Analytics({ onClose, onError }: Props) {
   const maxDay = data?.daily_opens.reduce((m, d) => Math.max(m, d.count), 0) ?? 0;
 
   return (
-    <Screen kind="analytics" title="Analytics · davidcast" onClose={onClose}>
+    <Screen kind="analytics" title="Analytics · smallcast" onClose={onClose}>
       <div className="analytics">
           {loading && <div className="analytics-empty">Loading…</div>}
 
@@ -64,7 +64,7 @@ export function Analytics({ onClose, onError }: Props) {
             <div className="analytics-empty">
               No events yet. Open the palette, run something, and the log will
               start filling up at{" "}
-              <code>{data.log_path ?? "~/Library/Application Support/davidcast/analytics.jsonl"}</code>
+              <code>{data.log_path ?? "~/Library/Application Support/smallcast/analytics.jsonl"}</code>
               .
             </div>
           )}

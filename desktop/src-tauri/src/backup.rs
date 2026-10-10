@@ -1,10 +1,10 @@
-//! Git-backed backup of the davidcast store directory.
+//! Git-backed backup of the smallcast store directory.
 //!
-//! The working tree IS the data dir (`~/Library/Application Support/davidcast/`),
+//! The working tree IS the data dir (`~/Library/Application Support/smallcast/`),
 //! and the .git lives at `<data_dir>/.backup-git/` so it stays out of sight.
 //! All operations shell out to the system `git` CLI, so whatever auth lets
 //! the user `git push` from their terminal — SSH key, gh CLI, credential
-//! helper — Just Works without davidcast managing credentials.
+//! helper — Just Works without smallcast managing credentials.
 //!
 //! Conflicts: the happy path is `pull --rebase` then push. If pull fails
 //! (genuine conflict, or "remote has unrelated history"), we abort the
@@ -87,7 +87,7 @@ pub fn is_initialized() -> bool {
 pub fn write_gitignore(include_analytics: bool) -> Result<(), String> {
     let path = root()?.join(".gitignore");
     let mut content = String::from(
-        "# Managed by davidcast — do not edit.\n\
+        "# Managed by smallcast — do not edit.\n\
          .backup-git/\n\
          apps_cache.json\n\
          icons/\n\
@@ -159,12 +159,12 @@ pub fn init(remote: &str, branch: &str, include_analytics: bool) -> Result<(), S
     let out = git()?
         .args([
             "-c",
-            "user.name=davidcast",
+            "user.name=smallcast",
             "-c",
-            "user.email=davidcast@local",
+            "user.email=smallcast@local",
             "commit",
             "-m",
-            "davidcast: initial backup",
+            "smallcast: initial backup",
             "--allow-empty",
         ])
         .output()
@@ -201,15 +201,15 @@ pub fn sync(branch: &str, include_analytics: bool) -> Result<(), String> {
         .map_err(|e| format!("git diff: {e}"))?;
     if !out.status.success() {
         let msg = format!(
-            "davidcast: backup {}",
+            "smallcast: backup {}",
             chrono::Utc::now().format("%Y-%m-%d %H:%M")
         );
         let out = git()?
             .args([
                 "-c",
-                "user.name=davidcast",
+                "user.name=smallcast",
                 "-c",
-                "user.email=davidcast@local",
+                "user.email=smallcast@local",
                 "commit",
                 "-m",
                 &msg,
