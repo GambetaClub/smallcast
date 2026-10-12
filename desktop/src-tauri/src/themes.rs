@@ -13,7 +13,7 @@ pub struct Theme {
     pub tokens: BTreeMap<String, String>,
 }
 
-const FONT_SYSTEM: &str = "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", system-ui, sans-serif";
+const FONT_SYSTEM: &str = "Inter, -apple-system, BlinkMacSystemFont, \"SF Pro Text\", system-ui, sans-serif";
 const FONT_MONO: &str = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
 macro_rules! tokens {
@@ -27,26 +27,8 @@ macro_rules! tokens {
 pub fn default_theme() -> Theme {
     Theme {
         id: "default".into(),
-        name: "Default (Dark)".into(),
+        name: "Parrot".into(),
         tokens: tokens! {
-            "bg" => "rgba(24, 24, 28, 0.92)",
-            "bg-solid" => "#18181c",
-            "bg-row" => "transparent",
-            "bg-row-active" => "rgba(255, 255, 255, 0.08)",
-            "fg" => "#e8e8ea",
-            "fg-dim" => "#8a8a92",
-            "fg-faint" => "#5a5a60",
-            "border" => "rgba(255, 255, 255, 0.06)",
-            "accent" => "#7bd88f",
-            "danger" => "#ef6a6a",
-            "badge-snippet" => "#6aaaef",
-            "badge-quicklink" => "#c56aef",
-            "badge-clipboard" => "#e0a960",
-            "badge-agent" => "#d08ae0",
-            "badge-vite" => "#f5e961",
-            "badge-docker" => "#5ab8e0",
-            "badge-logs" => "#8aa2b8",
-            "shadow" => "0 28px 80px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35)",
             "font-family" => FONT_SYSTEM,
             "font-family-mono" => FONT_MONO,
         },

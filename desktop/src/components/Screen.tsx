@@ -56,7 +56,7 @@ export function Screen({ kind, title, topbarRight, onClose, children }: Props) {
       tabIndex={-1}
     >
       <div className="topbar">
-        <div className="prefs-title">{title}</div>
+        <div className="prefs-title" role="heading" aria-level={1}>{title}</div>
         <div className="topbar-spacer" />
         {topbarRight ?? <span className="topbar-hint">esc to close</span>}
       </div>

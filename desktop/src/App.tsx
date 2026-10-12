@@ -139,6 +139,34 @@ export default function App() {
     api.getActiveTheme().then(applyTheme).catch(() => {});
   }, []);
 
+  // ⌘+ / ⌘- / ⌘0 scale text and icons together, like browser zoom.
+  useEffect(() => {
+    let zoom = 1;
+    try {
+      zoom = Number(localStorage.getItem("ui-zoom")) || 1;
+    } catch {}
+    const apply = () => {
+      document.documentElement.style.zoom = String(zoom);
+      try {
+        localStorage.setItem("ui-zoom", String(zoom));
+      } catch {}
+    };
+    apply();
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.altKey || e.ctrlKey) return;
+      if (e.key === "=" || e.key === "+") zoom = Math.min(1.6, zoom + 0.1);
+      else if (e.key === "-") zoom = Math.max(0.7, zoom - 0.1);
+      else if (e.key === "0") zoom = 1;
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+      zoom = Math.round(zoom * 10) / 10;
+      apply();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   // Check for updates on launch, gated by user setting. Silent when no
   // update or when the network is offline — manual "Check for Updates"
   // command surfaces errors.
@@ -392,7 +420,7 @@ export default function App() {
       )}
       {error && (
         <div className="error-banner" role="alert">
-          <span className="error-banner-text">{error}</span>
+          <span className="error-banner-text" title={error}>{error}</span>
           <button
             type="button"
             aria-label="Dismiss"

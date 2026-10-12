@@ -103,7 +103,9 @@ export function Preferences({ onClose, onError }: Props) {
                   Start smallcast automatically when you sign in.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Launch at login"
                 className={`switch ${autostart ? "on" : ""}`}
                 onClick={toggleAutostart}
                 role="switch"
@@ -128,7 +130,9 @@ export function Preferences({ onClose, onError }: Props) {
                   <code>app.check_updates</code> from the palette anytime.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Check for updates on launch"
                 className={`switch ${settings?.check_updates_on_launch ? "on" : ""}`}
                 onClick={() =>
                   toggleSetting(
@@ -153,7 +157,9 @@ export function Preferences({ onClose, onError }: Props) {
                   unfiltered list.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Include snippets in search"
                 className={`switch ${settings?.show_snippets_inline ? "on" : ""}`}
                 onClick={() =>
                   toggleSetting("show_snippets_inline", api.setShowSnippetsInline)
@@ -170,7 +176,9 @@ export function Preferences({ onClose, onError }: Props) {
                   <b>Search Quicklinks</b> command.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Include quicklinks in search"
                 className={`switch ${settings?.show_quicklinks_inline ? "on" : ""}`}
                 onClick={() =>
                   toggleSetting("show_quicklinks_inline", api.setShowQuicklinksInline)
@@ -191,7 +199,9 @@ export function Preferences({ onClose, onError }: Props) {
                   off, find them via the <b>Show Vite Ports</b> command.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Show Vite ports inline"
                 className={`switch ${settings?.show_vite_inline ? "on" : ""}`}
                 onClick={() => toggleSetting("show_vite_inline", api.setShowViteInline)}
                 role="switch"
@@ -207,7 +217,9 @@ export function Preferences({ onClose, onError }: Props) {
                   latency. Stored locally; ignored by sync.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Show search performance pill"
                 className={`switch ${perfPillEnabled ? "on" : ""}`}
                 onClick={() => {
                   const next = !perfPillEnabled;
@@ -234,7 +246,9 @@ export function Preferences({ onClose, onError }: Props) {
                   Containers</b> command.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Show Docker containers inline"
                 className={`switch ${settings?.show_docker_inline ? "on" : ""}`}
                 onClick={() => toggleSetting("show_docker_inline", api.setShowDockerInline)}
                 role="switch"
@@ -253,6 +267,7 @@ export function Preferences({ onClose, onError }: Props) {
               </div>
               <input
                 className="prefs-input"
+                aria-label="Screenshot folders"
                 defaultValue={settings?.screenshot_dirs.join(", ") ?? ""}
                 placeholder="/Users/you/Desktop, /Users/you/Pictures/Screenshots"
                 onBlur={(e) => saveScreenshotDirs(e.target.value)}
@@ -275,7 +290,9 @@ export function Preferences({ onClose, onError }: Props) {
                   thing.
                 </div>
               </div>
-              <div
+              <button
+                type="button"
+                aria-label="Smart palette ranking"
                 className={`switch ${settings?.enable_recommendations ? "on" : ""}`}
                 onClick={() =>
                   toggleSetting(
@@ -543,6 +560,7 @@ function GitHubSection({ onError }: { onError: (s: string) => void }) {
       )}
       <div className="prefs-add">
         <input
+          aria-label="Repository to add"
           value={newRepo}
           onChange={(e) => setNewRepo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
@@ -659,7 +677,9 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
             helper. smallcast never stores tokens.
           </div>
         </div>
-        <div
+        <button
+          type="button"
+          aria-label="Enable git backup"
           className={`switch ${settings.enabled ? "on" : ""}`}
           onClick={toggleEnabled}
           role="switch"
@@ -677,6 +697,7 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
         </div>
         <input
           className="prefs-input"
+          aria-label="Remote URL"
           defaultValue={settings.remote}
           placeholder="git@github.com:you/smallcast-backup.git"
           onBlur={(e) => saveRemote(e.target.value)}
@@ -692,6 +713,7 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
         </div>
         <input
           className="prefs-input"
+          aria-label="Branch"
           style={{ minWidth: 140 }}
           defaultValue={settings.branch}
           onBlur={(e) => saveBranch(e.target.value)}
@@ -706,7 +728,9 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
             Turn on if you want full-fidelity backups across machines.
           </div>
         </div>
-        <div
+        <button
+          type="button"
+          aria-label="Include analytics.jsonl"
           className={`switch ${settings.include_analytics ? "on" : ""}`}
           onClick={toggleIncludeAnalytics}
           role="switch"
@@ -724,7 +748,7 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
               </>
             )}
             {initialized && diverged && (
-              <span style={{ color: "#f0b46b" }}>
+              <span style={{ color: "var(--badge-clipboard)" }}>
                 ⚠ Diverged: {status?.ahead} ahead / {status?.behind} behind.
                 Resolve with `git` in the .backup-git dir, or use Force Push to
                 overwrite remote.
@@ -743,7 +767,7 @@ function BackupSection({ onError }: { onError: (s: string) => void }) {
               </>
             )}
             {status?.last_error && (
-              <div style={{ color: "#f08585", marginTop: 4, fontSize: 11 }}>
+              <div style={{ color: "var(--danger)", marginTop: 4, fontSize: 11 }}>
                 Last error: {status.last_error}
               </div>
             )}

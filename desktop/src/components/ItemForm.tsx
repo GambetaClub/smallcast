@@ -179,6 +179,7 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
             <div className="tab-switch">
               <button
                 className={kind === "snippet" ? "active" : ""}
+                aria-pressed={kind === "snippet"}
                 onClick={() => setKind("snippet")}
                 type="button"
                 tabIndex={-1}
@@ -187,6 +188,7 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
               </button>
               <button
                 className={kind === "quicklink" ? "active" : ""}
+                aria-pressed={kind === "quicklink"}
                 onClick={() => setKind("quicklink")}
                 type="button"
                 tabIndex={-1}
@@ -199,8 +201,9 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
 
         <div className="form-body">
           <div className="form-field">
-            <label>Name</label>
+            <label htmlFor="form-name">Name</label>
             <input
+              id="form-name"
               ref={nameRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -211,7 +214,7 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
           {kind === "snippet" ? (
             <>
               <div className="form-field">
-                <label>
+                <label htmlFor="form-text">
                   Text
                   {sensitive && (
                     <button
@@ -225,6 +228,7 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
                   )}
                 </label>
                 <textarea
+                  id="form-text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Paste content…"
@@ -260,8 +264,9 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
           ) : (
             <>
               <div className="form-field">
-                <label>URL (use {"{placeholder}"} for arguments)</label>
+                <label htmlFor="form-url">URL (use {"{placeholder}"} for arguments)</label>
                 <input
+                  id="form-url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://github.com/search?q={query}"
@@ -269,8 +274,9 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
                 />
               </div>
               <div className="form-field">
-                <label>Open in</label>
+                <label htmlFor="form-open-in">Open in</label>
                 <select
+                  id="form-open-in"
                   value={openIn}
                   onChange={(e) => setOpenIn(e.target.value as OpenIn)}
                 >
@@ -283,8 +289,9 @@ export function ItemForm({ initial, presetKind, onDone, onCancel, onError }: Pro
           )}
 
           <div className="form-field">
-            <label>Keyword (optional)</label>
+            <label htmlFor="form-keyword">Keyword (optional)</label>
             <input
+              id="form-keyword"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="e.g. sig"
