@@ -80,6 +80,7 @@ export interface FileEntry {
   size: number;
   modified_at: number;
   is_image: boolean;
+  is_dir: boolean;
   ext: string;
 }
 
@@ -90,6 +91,7 @@ export interface FileSearchOpts {
   roots?: string[];
   sort_by_mtime?: boolean;
   limit?: number;
+  folders?: boolean;
 }
 
 export interface Theme {

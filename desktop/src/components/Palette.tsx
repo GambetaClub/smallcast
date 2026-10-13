@@ -32,6 +32,7 @@ import {
 } from "../types";
 import type { FileSearchOpts } from "../types";
 import { evaluateMath } from "../calc";
+import { ColorIcon } from "./icons";
 import { r2, scheduleIdle } from "../utils";
 
 type KindFilter = PaletteEntry["kind"] | null;
@@ -104,8 +105,12 @@ function loadRecents(): Record<string, number> {
 ///   :newest                    -> sort by modified time, newest first
 /// Anything else is treated as a name pattern handed to fd.
 function parseFileQuery(input: string): FileSearchOpts {
-  const tokens = input.trim().split(/\s+/).filter(Boolean);
   const opts: FileSearchOpts = {};
+  if (input.trimStart().startsWith("/")) {
+    opts.folders = true;
+    input = input.trimStart().slice(1);
+  }
+  const tokens = input.trim().split(/\s+/).filter(Boolean);
   const remaining: string[] = [];
   const extensions: string[] = [];
   for (const t of tokens) {
@@ -127,7 +132,8 @@ function parseFileQuery(input: string): FileSearchOpts {
     !q &&
     extensions.length === 0 &&
     !opts.category &&
-    !opts.sort_by_mtime
+    !opts.sort_by_mtime &&
+    !opts.folders
   ) {
     opts.sort_by_mtime = true;
     opts.limit = 50;
@@ -1214,7 +1220,7 @@ export function Palette({
       className={`palette${showSidePreview ? " with-preview" : ""}`}
       onKeyDown={handleKey}
     >
-      <div className="search">
+      <div className="search" data-tauri-drag-region>
         {kindFilter && (
           <button
             type="button"
@@ -1277,14 +1283,14 @@ export function Palette({
         )}
       </div>
 
-      <div className="footer">
+      <div className="footer" data-tauri-drag-region>
         {screenshotMode ? (
           <>
             <span><kbd>↵</kbd>Copy path</span>
             <span><kbd>⌘⇧C</kbd>Copy image</span>
             <span><kbd>⌘↵</kbd>Open</span>
             <span><kbd>⌘R</kbd>Reveal</span>
-            <div className="footer-spacer" />
+            <div className="footer-spacer" data-tauri-drag-region />
             <span><kbd>esc</kbd>Close</span>
           </>
         ) : kindFilter === "skill" ? (
@@ -1293,7 +1299,7 @@ export function Palette({
             <span><kbd>⌘⇧C</kbd>Copy contents</span>
             <span><kbd>⌘↵</kbd>Open in editor</span>
             <span><kbd>⌘R</kbd>Reveal</span>
-            <div className="footer-spacer" />
+            <div className="footer-spacer" data-tauri-drag-region />
             <span><kbd>esc</kbd>Close</span>
           </>
         ) : (
@@ -1303,7 +1309,7 @@ export function Palette({
             <span><kbd>⌘N</kbd>New</span>
             <span><kbd>⌘E</kbd>Edit</span>
             <span><kbd>⌘⌫</kbd>Delete</span>
-            <div className="footer-spacer" />
+            <div className="footer-spacer" data-tauri-drag-region />
             <span><kbd>⌘⇧V</kbd>Clipboard</span>
             <span><kbd>esc</kbd>Close</span>
           </>
@@ -1580,7 +1586,9 @@ const Row = memo(function Row({
     sub = `${entry.parent} · ${formatSize(entry.size)} · ${relativeTime(
       new Date(entry.modified_at).toISOString()
     )}`;
-    badge = entry.is_image
+    badge = entry.is_dir
+      ? "Folder"
+      : entry.is_image
       ? "Image"
       : entry.ext
       ? entry.ext.toUpperCase()
@@ -1637,7 +1645,7 @@ const Row = memo(function Row({
       </div>
       <div className="row-right">
         {keyword && <span className="keyword">{keyword}</span>}
-        <span className="kind-badge">{badge}</span>
+        <KindIcon entry={entry} label={badge} />
       </div>
     </div>
   );
@@ -1648,8 +1656,8 @@ function EntryIcon({ entry }: { entry: PaletteEntry }) {
 
   if (isCommand(entry)) {
     return (
-      <div className="row-icon glyph command">
-        <CommandGlyph id={entry.id} />
+      <div className="row-icon command">
+        {COMMAND_ICON_NAMES[entry.id] ? <ColorIcon name={COMMAND_ICON_NAMES[entry.id]} size={26} /> : <CommandGlyph id={entry.id} />}
       </div>
     );
   }
@@ -1700,6 +1708,13 @@ function EntryIcon({ entry }: { entry: PaletteEntry }) {
     );
   }
   if (isFile(entry)) {
+    if (entry.is_dir) {
+      return (
+        <div className="row-icon command">
+          <ColorIcon name="folder" size={26} />
+        </div>
+      );
+    }
     if (entry.is_image) {
       return <ImageThumb path={entry.path} fallback={entry.name} />;
     }
@@ -1976,6 +1991,31 @@ function AppIcon({ path, fallback }: { path: string; fallback: string }) {
 
 // ---------- Inline glyphs (so they crispen at any DPI) ----------
 
+function kindIconKey(entry: PaletteEntry): string {
+  if (isSnippet(entry) && entry.sensitive) return "sensitive";
+  if (isDocker(entry) && entry.mode === "logs") return "logs";
+  if (isFile(entry)) {
+    if (entry.is_dir) return "folder";
+    if (entry.is_image) return "image";
+    return entry.ext?.toLowerCase() === "pdf" ? "pdf" : "file";
+  }
+  return entry.kind;
+}
+
+const KIND_ICON_NAMES: Record<string, string> = {
+  command: "command", app: "grid", snippet: "doc", sensitive: "lockRed", quicklink: "link",
+  agent: "claude", vite: "vite", docker: "docker", logs: "terminal", clipboard: "clipboard",
+  image: "image", folder: "folder", pdf: "pdf", file: "file", skill: "sparkle", calc: "calc",
+  github_pr: "pr", github_issue: "issue",
+};
+
+function KindIcon({ entry, label }: { entry: PaletteEntry; label: string }) {
+  const name = KIND_ICON_NAMES[kindIconKey(entry)];
+  if (!name) return <span className="kind-badge">{label}</span>;
+  return <span className="kind-icon"><ColorIcon name={name} size={16} label={label} /></span>;
+}
+
+
 // Paths from Lucide (ISC), 24px grid.
 const COMMAND_ICONS: Record<string, React.ReactNode> = {
   "create.snippet": <><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M9 15h6" /><path d="M12 18v-6" /></>,
@@ -2004,6 +2044,35 @@ const COMMAND_ICONS: Record<string, React.ReactNode> = {
   "github.prs": <><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M13 6h3a2 2 0 0 1 2 2v7" /><path d="M6 9v12" /></>,
   "github.issues": <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="1" /></>,
   "github.assigned": <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
+};
+
+const COMMAND_ICON_NAMES: Record<string, string> = {
+  "create.snippet": "docPlus",
+  "create.quicklink": "link",
+  "search.snippets": "listSearch",
+  "search.quicklinks": "globe",
+  "show.clipboard": "clipboard",
+  "show.agents": "claude",
+  "show.vite": "vite",
+  "show.docker": "docker",
+  "files.find": "folder",
+  "files.screenshots": "image",
+  "screenshots.copy_latest_path": "copy",
+  "skills.search": "sparkle",
+  "system.lock": "lock",
+  "system.sleep": "moon",
+  "system.empty_trash": "trash",
+  "system.restart": "restart",
+  "system.shut_down": "power",
+  "system.log_out": "logout",
+  "open.preferences": "sliders",
+  "help.show": "help",
+  "show.analytics": "chart",
+  "show.stats": "pulse",
+  "app.check_updates": "download",
+  "github.prs": "pr",
+  "github.issues": "issue",
+  "github.assigned": "person",
 };
 
 function CommandGlyph({ id }: { id: string }) {

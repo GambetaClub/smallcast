@@ -55,6 +55,7 @@ If the command touches a window or plugin not already permitted, also add the pe
 - **Raycast import quirks** live in `commands.rs::normalize_raycast_url` and `import_from_file` — Raycast's `{argument name="x"}` becomes `{x}`, and `openWith` bundle ids map to the `OpenIn` enum. Tests cover this.
 - **Hotkey is hard-coded** to `⌥ Space` in `hotkey.rs::default_shortcut`. Rebinding UI is on the roadmap, not built.
 - **Commit messages**: never mention Claude Code as the tool; the model name is fine (per user's global instruction).
+- **Never push to `upstream`** (`davidbroza/davidcast`, someone else's repo). Push only to `origin` (`GambetaClub/smallcast`), always naming the remote: `git push origin <branch>`.
 
 ## Features (keep this list current)
 

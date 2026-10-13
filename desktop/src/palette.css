@@ -240,8 +240,7 @@ body[data-view="palette"] {
   background: linear-gradient(135deg, #c56aef, #8a3fd0);
   color: #fff;
 }
-.row-icon.glyph.command {
-  background: var(--fill-3);
+.row-icon.command {
   color: var(--accent);
 }
 .row-icon.glyph.agent {
@@ -440,6 +439,11 @@ body[data-view="palette"] {
   border: 1px solid var(--border);
   border-radius: 3px;
   white-space: nowrap;
+}
+
+.kind-icon {
+  flex-shrink: 0;
+  display: flex;
 }
 
 .toast {

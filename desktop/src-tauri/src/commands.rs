@@ -386,6 +386,7 @@ pub async fn search_screenshots(
         roots,
         sort_by_mtime: true,
         limit: Some(limit.unwrap_or(50)),
+        folders: false,
     }))
 }
 

@@ -22,6 +22,7 @@ pub struct FileEntry {
     /// Unix milliseconds.
     pub modified_at: u64,
     pub is_image: bool,
+    pub is_dir: bool,
     pub ext: String,
 }
 
@@ -34,6 +35,7 @@ pub struct FileSearchOpts {
     pub roots: Vec<String>,
     pub sort_by_mtime: bool,
     pub limit: Option<usize>,
+    pub folders: bool,
 }
 
 const DEFAULT_LIMIT: usize = 100;
@@ -169,11 +171,12 @@ pub fn search(mut opts: FileSearchOpts) -> Vec<FileEntry> {
             .filter(|root| Path::new(root).exists())
             .map(|root| {
                 let extensions = &extensions;
+                let kind = if opts.folders { "dir" } else { "file" };
                 scope.spawn(move || {
                     if opts.sort_by_mtime {
-                        newest_paths(pattern, root, extensions, limit)
+                        newest_paths(kind, pattern, root, extensions, limit)
                     } else {
-                        fsearch_paths(pattern, root, extensions, None, FSEARCH_HITS)
+                        fsearch_paths(kind, pattern, root, extensions, None, FSEARCH_HITS)
                     }
                 })
             })
@@ -190,7 +193,7 @@ pub fn search(mut opts: FileSearchOpts) -> Vec<FileEntry> {
     }
 
     hits.into_iter()
-        .filter_map(|h| decorate(Path::new(&h.path)))
+        .filter_map(|h| decorate(Path::new(&h.path), opts.folders))
         .take(limit)
         .collect()
 }
@@ -204,11 +207,11 @@ struct Hit {
 const FSEARCH_HITS: usize = 5000;
 const NEWEST_WINDOWS: &[&str] = &["1h", "6h", "1d", "7d", "30d", "365d"];
 
-fn fsearch_paths(pattern: &str, root: &str, extensions: &[String], window: Option<&str>, hits: usize) -> Option<Vec<Hit>> {
+fn fsearch_paths(kind: &str, pattern: &str, root: &str, extensions: &[String], window: Option<&str>, hits: usize) -> Option<Vec<Hit>> {
     if root.contains('"') {
         return None;
     }
-    let mut query = format!("kind:file in:\"{root}\" limit:{hits}");
+    let mut query = format!("kind:{kind} in:\"{root}\" limit:{hits}");
     if !extensions.is_empty() {
         query.push_str(&format!(" ext:{}", extensions.join(",")));
     }
@@ -240,19 +243,19 @@ fn fsearch_paths(pattern: &str, root: &str, extensions: &[String], window: Optio
 }
 
 /// fsearch has no sort-by-mtime, so widen the time window until it holds `limit` files.
-fn newest_paths(pattern: &str, root: &str, extensions: &[String], limit: usize) -> Option<Vec<Hit>> {
+fn newest_paths(kind: &str, pattern: &str, root: &str, extensions: &[String], limit: usize) -> Option<Vec<Hit>> {
     for window in NEWEST_WINDOWS {
-        let paths = fsearch_paths(pattern, root, extensions, Some(window), FSEARCH_HITS)?;
+        let paths = fsearch_paths(kind, pattern, root, extensions, Some(window), FSEARCH_HITS)?;
         if paths.len() >= limit {
             return Some(paths);
         }
     }
-    fsearch_paths(pattern, root, extensions, None, FSEARCH_HITS)
+    fsearch_paths(kind, pattern, root, extensions, None, FSEARCH_HITS)
 }
 
-fn decorate(p: &Path) -> Option<FileEntry> {
+fn decorate(p: &Path, folders: bool) -> Option<FileEntry> {
     let meta = p.metadata().ok()?;
-    if !meta.is_file() {
+    if !(if folders { meta.is_dir() } else { meta.is_file() }) {
         return None;
     }
     let modified_at = meta
@@ -279,6 +282,7 @@ fn decorate(p: &Path) -> Option<FileEntry> {
         size: meta.len(),
         modified_at,
         is_image,
+        is_dir: meta.is_dir(),
         ext,
     })
 }
