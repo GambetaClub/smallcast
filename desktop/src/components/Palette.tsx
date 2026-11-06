@@ -1286,8 +1286,8 @@ export function Palette({
       <div className="footer" data-tauri-drag-region>
         {screenshotMode ? (
           <>
-            <span><kbd>↵</kbd>Copy path</span>
-            <span><kbd>⌘⇧C</kbd>Copy image</span>
+            <span><kbd>↵</kbd>Copy</span>
+            <span><kbd>⌘⇧C</kbd>Image</span>
             <span><kbd>⌘↵</kbd>Open</span>
             <span><kbd>⌘R</kbd>Reveal</span>
             <div className="footer-spacer" data-tauri-drag-region />
@@ -1295,9 +1295,9 @@ export function Palette({
           </>
         ) : kindFilter === "skill" ? (
           <>
-            <span><kbd>↵</kbd>Copy path</span>
-            <span><kbd>⌘⇧C</kbd>Copy contents</span>
-            <span><kbd>⌘↵</kbd>Open in editor</span>
+            <span><kbd>↵</kbd>Copy</span>
+            <span><kbd>⌘⇧C</kbd>Contents</span>
+            <span><kbd>⌘↵</kbd>Open</span>
             <span><kbd>⌘R</kbd>Reveal</span>
             <div className="footer-spacer" data-tauri-drag-region />
             <span><kbd>esc</kbd>Close</span>
@@ -1492,29 +1492,29 @@ function filterLabel(k: PaletteEntry["kind"]): string {
 function placeholderFor(k: KindFilter): string {
   switch (k) {
     case "agent":
-      return "Search running agents by project…";
+      return "Search agents";
     case "vite":
-      return "Search Vite dev servers — ↵ opens in browser";
+      return "Search dev servers";
     case "docker":
-      return "Search Docker containers — ↵ shell, or type 'logs'";
+      return "Search containers";
     case "snippet":
-      return "Search snippets…";
+      return "Search snippets";
     case "quicklink":
-      return "Search quicklinks…";
+      return "Search quicklinks";
     case "clipboard":
-      return "Search clipboard history…";
+      return "Search clipboard";
     case "app":
-      return "Search applications…";
+      return "Search apps";
     case "command":
-      return "Search built-in commands…";
+      return "Search commands";
     case "file":
-      return "Find files — try :png screenshot, :img :newest, ⌘C path, ⌘R reveal";
+      return "Search files, / for folders";
     case "skill":
-      return "Search Claude Code skills — ↵ copies path, ⌘↵ opens, ⌘⇧C copies contents";
+      return "Search skills";
     case "github_pr":
-      return "Open PRs across your tracked repos — ↵ opens in browser";
+      return "Search PRs";
     case "github_issue":
-      return "Search GitHub issues — type to filter, ↵ opens";
+      return "Search issues";
     default:
       return "Type to search — snippets, quicklinks, apps, agents, commands…";
   }

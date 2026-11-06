@@ -568,6 +568,7 @@ body[data-view="palette"] {
   color: var(--fg-dim);
   height: 32px;
   white-space: nowrap;
+  overflow: hidden;
 }
 .footer kbd {
   background: var(--fill-3);
