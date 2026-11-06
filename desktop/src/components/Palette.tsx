@@ -59,6 +59,7 @@ const MAX_VISIBLE = 80;
 // first keystroke, so painting 80 rows just to immediately diff most of
 // them away is wasted work. 24 covers all visible rows + a buffer.
 const MAX_VISIBLE_EMPTY = 24;
+const MAIN_FILE_ROWS = 20;
 
 const FUSE_OPTIONS: import("fuse.js").IFuseOptions<PaletteEntry> = {
   keys: [
@@ -132,8 +133,7 @@ function parseFileQuery(input: string): FileSearchOpts {
     !q &&
     extensions.length === 0 &&
     !opts.category &&
-    !opts.sort_by_mtime &&
-    !opts.folders
+    !opts.sort_by_mtime
   ) {
     opts.sort_by_mtime = true;
     opts.limit = 50;
@@ -202,6 +202,7 @@ export function Palette({
   const [kindFilter, setKindFilter] = useState<KindFilter>(initialFilter ?? null);
   const [clipboardEntries, setClipboardEntries] = useState<PaletteEntry[]>([]);
   const [fileEntries, setFileEntries] = useState<PaletteEntry[]>([]);
+  const [fileEntriesFor, setFileEntriesFor] = useState("");
   const [screenshotMode, setScreenshotMode] = useState(false);
   const [skillEntries, setSkillEntries] = useState<PaletteEntry[]>([]);
   const [githubEntries, setGithubEntries] = useState<PaletteEntry[]>([]);
@@ -268,8 +269,15 @@ export function Palette({
   // Empty query in file mode falls back to "newest 50" so the user sees
   // something useful immediately. Screenshot mode uses a dedicated query
   // path (uses screenshot_dirs from settings, sorted by mtime).
+  // The main list also searches files (below apps); a leading "/" means folders only.
   useEffect(() => {
-    if (kindFilter !== "file") return;
+    if (kindFilter === null) {
+      const q = query.trim();
+      if (q.length < 2 && !q.startsWith("/")) {
+        setFileEntries([]);
+        return;
+      }
+    } else if (kindFilter !== "file") return;
     let cancelled = false;
     const handle = window.setTimeout(() => {
       const fetcher = screenshotMode
@@ -279,6 +287,7 @@ export function Palette({
         .then((rows) => {
           if (cancelled) return;
           setFileEntries(rows.map((r) => ({ kind: "file" as const, ...r })));
+          setFileEntriesFor(query);
         })
         .catch((e) => onError(String(e)));
     }, 200);
@@ -535,16 +544,19 @@ export function Palette({
   // empty-query list. No section headers — one continuous list.
   const filtered = useMemo<PaletteEntry[]>(() => {
     if (kindFilter) return baseFiltered;
+    const files = fileEntriesFor === deferredQuery ? fileEntries : [];
+    if (deferredQuery.trimStart().startsWith("/")) return files;
+    const fileRows = deferredQuery.trim() ? files.slice(0, MAIN_FILE_ROWS) : [];
     const calc = evaluateMath(deferredQuery);
-    if (!calc) return baseFiltered;
+    if (!calc) return [...baseFiltered, ...fileRows];
     const row: PaletteEntry = {
       kind: "calc",
       id: `calc:${calc.expr}`,
       expr: calc.expr,
       result: calc.result,
     };
-    return [row, ...baseFiltered];
-  }, [baseFiltered, deferredQuery, kindFilter]);
+    return [row, ...baseFiltered, ...fileRows];
+  }, [baseFiltered, deferredQuery, kindFilter, fileEntries, fileEntriesFor]);
 
   // Two-part measurement:
   //   - input paint: time from keystroke to the input element committing
@@ -1516,7 +1528,7 @@ function placeholderFor(k: KindFilter): string {
     case "github_issue":
       return "Search issues";
     default:
-      return "Type to search — snippets, quicklinks, apps, agents, commands…";
+      return "Search apps and files, / for folders";
   }
 }
 

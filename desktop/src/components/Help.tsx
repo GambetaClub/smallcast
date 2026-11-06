@@ -110,7 +110,7 @@ const GROUPS: Group[] = [
       {
         name: "Find Files",
         command: "files.find",
-        description: "Searches your home folder (fsearch). Filter tokens: :png :img :newest. ⌘C path · ⌘R reveal · right-click copies path · drag a row into any app.",
+        description: "Searches your home folder (fsearch). Filter tokens: :png :img :newest. The main search also finds files (below apps); start with / to search only folders. ⌘C path · ⌘R reveal · right-click copies path · drag a row into any app.",
       },
       {
         name: "Find Screenshots",
