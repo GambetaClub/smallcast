@@ -689,8 +689,16 @@ export function Palette({
       // doesn't auto-select on the next show.
       lastMoveAtRef.current = 0;
     };
+    // Hiding via the hotkey or Escape doesn't always fire blur on an accessory app.
+    const onHidden = () => {
+      if (document.hidden) onBlur();
+    };
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
   }, []);
 
   // No-results detection: when the user has typed something but nothing
