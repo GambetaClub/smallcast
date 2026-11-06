@@ -12,8 +12,8 @@ pub struct AppEntry {
 
 /// Background-warmed cache. `list_apps()` returns from here without ever
 /// walking the filesystem on the palette-open critical path. A worker
-/// thread (started by `start_background_refresher`) rescans every
-/// REFRESH_SECS so freshly installed apps surface within that window.
+/// thread (started by `start_background_refresher`) rescans whenever an
+/// app folder changes, and every REFRESH_SECS as a fallback.
 ///
 /// The /Applications walk was the dominant cost in `list_palette` and
 /// scaled with installed-app count + filesystem cache state. Caching it
@@ -21,6 +21,7 @@ pub struct AppEntry {
 static APPS: OnceLock<RwLock<Vec<AppEntry>>> = OnceLock::new();
 
 const REFRESH_SECS: u64 = 60;
+const SETTLE: Duration = Duration::from_millis(500);
 
 fn cache() -> &'static RwLock<Vec<AppEntry>> {
     APPS.get_or_init(|| RwLock::new(Vec::new()))
@@ -41,27 +42,59 @@ pub fn list_apps() -> Vec<AppEntry> {
     fresh
 }
 
-/// Spawn the cache-warmer thread. Does the first scan immediately, then
-/// rescans every REFRESH_SECS forever. Call once at app setup.
+/// Spawn the cache-warmer thread. Scans now, then again on any change to an
+/// app folder, or every REFRESH_SECS. Call once at app setup.
 pub fn start_background_refresher() {
-    std::thread::spawn(|| loop {
-        let fresh = scan_all();
-        *cache().write() = fresh;
-        std::thread::sleep(Duration::from_secs(REFRESH_SECS));
+    std::thread::spawn(|| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let _watcher = watch_roots(tx.clone());
+        loop {
+            *cache().write() = scan_all();
+            if rx.recv_timeout(Duration::from_secs(REFRESH_SECS)).is_ok() {
+                // An install fires a burst of events; let it settle, then rescan once.
+                std::thread::sleep(SETTLE);
+                while rx.try_recv().is_ok() {}
+            }
+        }
     });
 }
 
 #[cfg(target_os = "macos")]
-fn scan_all() -> Vec<AppEntry> {
-    let mut out: Vec<AppEntry> = Vec::new();
-    let mut roots: Vec<PathBuf> = vec![
+fn watch_roots(tx: std::sync::mpsc::Sender<()>) -> Option<notify::RecommendedWatcher> {
+    use notify::Watcher;
+    let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+        if res.is_ok() {
+            let _ = tx.send(());
+        }
+    })
+    .ok()?;
+    for root in roots() {
+        // NonRecursive: only bundles added/removed at the top level, not writes inside them.
+        let _ = watcher.watch(&root, notify::RecursiveMode::NonRecursive);
+    }
+    Some(watcher)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn watch_roots(_tx: std::sync::mpsc::Sender<()>) -> Option<()> {
+    None
+}
+
+fn roots() -> Vec<PathBuf> {
+    let mut roots = vec![
         PathBuf::from("/Applications"),
         PathBuf::from("/System/Applications"),
     ];
     if let Some(home) = dirs::home_dir() {
         roots.push(home.join("Applications"));
     }
-    for root in roots {
+    roots
+}
+
+#[cfg(target_os = "macos")]
+fn scan_all() -> Vec<AppEntry> {
+    let mut out: Vec<AppEntry> = Vec::new();
+    for root in roots() {
         scan(&root, &mut out, 0);
     }
     out.push(AppEntry {

@@ -35,6 +35,7 @@ tauri-plugin-drag = "2.1.1"
 objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
+notify = "8"
 
 [dev-dependencies]
 tempfile = "3"
