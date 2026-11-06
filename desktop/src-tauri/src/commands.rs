@@ -793,8 +793,59 @@ fn builtin_commands() -> Vec<CommandEntry> {
     for c in commands.iter_mut() {
         c.keyword = derive_keyword(&c.name);
     }
+    commands.extend(SETTINGS_PANES.iter().map(|(pane, name, aliases)| CommandEntry {
+        id: format!("settings:{pane}"),
+        name: (*name).into(),
+        subtitle: "System Settings".into(),
+        keyword: (!aliases.is_empty()).then(|| (*aliases).into()),
+    }));
     commands
 }
+
+// shortcut: hand-picked macOS 26 panes (ids from /System/Library/ExtensionKit/Extensions), add new ones here.
+const SETTINGS_PANES: &[(&str, &str, &str)] = &[
+    ("com.apple.Displays-Settings.extension", "Displays", "display monitor resolution brightness night shift"),
+    ("com.apple.wifi-settings-extension", "Wi-Fi", "wifi wireless internet"),
+    ("com.apple.BluetoothSettings", "Bluetooth", ""),
+    ("com.apple.Network-Settings.extension", "Network", "ethernet firewall"),
+    ("com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension", "VPN", ""),
+    ("com.apple.Battery-Settings.extension", "Battery", "power energy"),
+    ("com.apple.Sound-Settings.extension", "Sound", "volume audio output input microphone"),
+    ("com.apple.Appearance-Settings.extension", "Appearance", "dark mode light mode accent"),
+    ("com.apple.Wallpaper-Settings.extension", "Wallpaper", "background"),
+    ("com.apple.Desktop-Settings.extension", "Desktop & Dock", "dock mission control hot corners stage manager"),
+    ("com.apple.ControlCenter-Settings.extension", "Control Center", "menu bar"),
+    ("com.apple.Notifications-Settings.extension", "Notifications", ""),
+    ("com.apple.Focus-Settings.extension", "Focus", "do not disturb"),
+    ("com.apple.Screen-Time-Settings.extension", "Screen Time", ""),
+    ("com.apple.Lock-Screen-Settings.extension", "Lock Screen", "screen saver"),
+    ("com.apple.settings.PrivacySecurity.extension", "Privacy & Security", "permissions accessibility access"),
+    ("com.apple.Touch-ID-Settings.extension", "Touch ID & Password", "fingerprint"),
+    ("com.apple.Users-Groups-Settings.extension", "Users & Groups", "accounts"),
+    ("com.apple.Keyboard-Settings.extension", "Keyboard", "shortcuts input sources dictation"),
+    ("com.apple.Trackpad-Settings.extension", "Trackpad", "gestures"),
+    ("com.apple.Mouse-Settings.extension", "Mouse", ""),
+    ("com.apple.Print-Scan-Settings.extension", "Printers & Scanners", "printer"),
+    ("com.apple.Accessibility-Settings.extension", "Accessibility", "zoom voiceover"),
+    ("com.apple.Siri-Settings.extension", "Apple Intelligence & Siri", "siri"),
+    ("com.apple.Spotlight-Settings.extension", "Spotlight", ""),
+    ("com.apple.SystemProfiler.AboutExtension", "About This Mac", "about"),
+    ("com.apple.Software-Update-Settings.extension", "Software Update", "upgrade"),
+    ("com.apple.settings.Storage", "Storage", "disk space"),
+    ("com.apple.Date-Time-Settings.extension", "Date & Time", "clock timezone"),
+    ("com.apple.Localization-Settings.extension", "Language & Region", "locale"),
+    ("com.apple.LoginItems-Settings.extension", "Login Items & Extensions", "startup"),
+    ("com.apple.Sharing-Settings.extension", "Sharing", "airplay screen sharing remote"),
+    ("com.apple.AirDrop-Handoff-Settings.extension", "AirDrop & Handoff", "airdrop handoff"),
+    ("com.apple.Time-Machine-Settings.extension", "Time Machine", "backup"),
+    ("com.apple.Startup-Disk-Settings.extension", "Startup Disk", ""),
+    ("com.apple.Internet-Accounts-Settings.extension", "Internet Accounts", "mail accounts"),
+    ("com.apple.systempreferences.AppleIDSettings", "Apple Account", "icloud apple id"),
+    ("com.apple.Family-Settings.extension", "Family", ""),
+    ("com.apple.Game-Center-Settings.extension", "Game Center", ""),
+    ("com.apple.WalletSettingsExtension", "Wallet & Apple Pay", ""),
+    ("com.apple.Transfer-Reset-Settings.extension", "Transfer or Reset", "erase"),
+];
 
 // Async so the main (UI) thread is never blocked while this runs. In Tauri 2
 // a synchronous command executes on the main thread — and this one fans out to

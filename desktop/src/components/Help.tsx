@@ -135,6 +135,10 @@ const GROUPS: Group[] = [
     blurb: "Raycast-style quick actions. Destructive ones confirm first.",
     features: [
       {
+        name: "System Settings pages",
+        description: "Type a pane name (Displays, Wi-Fi, Sound, Keyboard…) to open it straight in System Settings.",
+      },
+      {
         name: "Lock Screen",
         command: "system.lock",
         description: "Sends ⌃⌘Q (the macOS Lock Screen shortcut). Needs Accessibility.",

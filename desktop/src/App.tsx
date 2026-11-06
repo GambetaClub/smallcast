@@ -289,6 +289,12 @@ export default function App() {
   };
 
   async function onCommand(id: string) {
+    if (id.startsWith("settings:")) {
+      api
+        .openUrl(`x-apple.systempreferences:${id.slice("settings:".length)}`)
+        .catch((e) => setError(String(e)));
+      return;
+    }
     switch (id) {
       case "create.snippet":
         setView({ kind: "create", presetKind: "snippet" });
