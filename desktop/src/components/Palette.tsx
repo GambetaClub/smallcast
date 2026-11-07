@@ -492,12 +492,7 @@ export function Palette({
     if (q.length <= 2) {
       const matches: PaletteEntry[] = [];
       for (const e of visibleEntries) {
-        if (nameOf(e).toLowerCase().startsWith(ql)) {
-          matches.push(e);
-          continue;
-        }
-        const kw = (e as { keyword?: string }).keyword;
-        if (kw && kw.toLowerCase().startsWith(ql)) matches.push(e);
+        if (startsWord(e, ql)) matches.push(e);
       }
       matches.sort((a, b) => {
         const ra = recents[entryKey(a)] ?? 0;
@@ -508,7 +503,7 @@ export function Palette({
         if (pa !== pb) return pa - pb;
         return nameOf(a).localeCompare(nameOf(b));
       });
-      return matches.slice(0, MAX_VISIBLE);
+      return byBucket(matches, ql, recents).slice(0, MAX_VISIBLE);
     }
     const results = getFuse().search(q);
     // Adjust Fuse's raw match score with two boosts:
@@ -534,7 +529,7 @@ export function Palette({
       if (pa !== pb) return pa - pb;
       return nameOf(a.item).localeCompare(nameOf(b.item));
     });
-    return scored.slice(0, MAX_VISIBLE).map((r) => r.item);
+    return byBucket(scored.map((r) => r.item), ql, recents).slice(0, MAX_VISIBLE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deferredQuery, visibleEntries, kindFilter]);
 
@@ -549,15 +544,20 @@ export function Palette({
     const files = fileEntriesFor === deferredQuery ? fileEntries : [];
     if (deferredQuery.trimStart().startsWith("/")) return files;
     const fileRows = deferredQuery.trim() ? files.slice(0, MAIN_FILE_ROWS) : [];
+    const ql = deferredQuery.trim().toLowerCase();
+    const recents = loadRecents();
+    let cut = baseFiltered.findIndex((e) => searchBucket(e, ql, recents) === 3);
+    if (cut < 0) cut = baseFiltered.length;
+    const list = [...baseFiltered.slice(0, cut), ...fileRows, ...baseFiltered.slice(cut)];
     const calc = evaluateMath(deferredQuery);
-    if (!calc) return [...baseFiltered, ...fileRows];
+    if (!calc) return list;
     const row: PaletteEntry = {
       kind: "calc",
       id: `calc:${calc.expr}`,
       expr: calc.expr,
       result: calc.result,
     };
-    return [row, ...baseFiltered, ...fileRows];
+    return [row, ...list];
   }, [baseFiltered, deferredQuery, kindFilter, fileEntries, fileEntriesFor]);
 
   // Two-part measurement:
@@ -997,14 +997,8 @@ export function Palette({
       })
       .catch(() => {});
 
-    // Bump recents on successful real executions only — we don't want
-    // "Create Snippet" or filter chips to dominate the suggestion list.
-    if (
-      success &&
-      outcome === "executed" &&
-      !isCommand(entry) &&
-      !isClipboard(entry)
-    ) {
+    // Commands count too, so "cl" finds the clipboard you just opened before the Claude app.
+    if (success && outcome !== "cancelled" && !isClipboard(entry)) {
       touchRecent(entryKey(entry));
     }
   }
@@ -1418,6 +1412,27 @@ function entryKey(e: PaletteEntry): string {
   if (isGitHubPr(e)) return `ghpr:${e.repo}:${e.number}`;
   if (isGitHubIssue(e)) return `ghi:${e.repo}:${e.number}`;
   return `${e.kind}:${e.id}`;
+}
+
+function startsWord(e: PaletteEntry, ql: string): boolean {
+  const name = nameOf(e).toLowerCase();
+  const kw = (e as { keyword?: string }).keyword?.toLowerCase();
+  return name.startsWith(ql) || name.split(/\s+/).some((w) => w.startsWith(ql)) || !!kw?.startsWith(ql);
+}
+
+// Typed-search order: recently used → apps → files → everything else.
+function searchBucket(e: PaletteEntry, ql: string, recents: Record<string, number>): number {
+  if (recents[entryKey(e)] && startsWord(e, ql)) return 0;
+  if (isApp(e)) return 1;
+  if (isFile(e)) return 2;
+  return 3;
+}
+
+function byBucket(list: PaletteEntry[], ql: string, recents: Record<string, number>): PaletteEntry[] {
+  return list
+    .map((e) => ({ e, b: searchBucket(e, ql, recents), r: recents[entryKey(e)] ?? 0 }))
+    .sort((a, b) => a.b - b.b || (a.b === 0 ? b.r - a.r : 0))
+    .map((x) => x.e);
 }
 
 function kindPriority(e: PaletteEntry): number {
