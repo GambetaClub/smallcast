@@ -449,6 +449,8 @@ export function Palette({
     // File mode is fully resolved by the backend (fd does the matching);
     // skip Fuse entirely so we don't filter the results twice.
     if (kindFilter === "file") return visibleEntries.slice(0, MAX_VISIBLE);
+    // Clipboard history stays newest-first (backend order) until you type.
+    if (kindFilter === "clipboard" && !deferredQuery.trim()) return visibleEntries.slice(0, MAX_VISIBLE);
     const q = deferredQuery.trim();
     const recents = loadRecents();
     if (!q) {
