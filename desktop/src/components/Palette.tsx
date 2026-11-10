@@ -1423,7 +1423,7 @@ function startsWord(e: PaletteEntry, ql: string): boolean {
 // Typed-search order: recently used → apps → files → everything else.
 function searchBucket(e: PaletteEntry, ql: string, recents: Record<string, number>): number {
   if (recents[entryKey(e)] && startsWord(e, ql)) return 0;
-  if (isApp(e)) return 1;
+  if (isApp(e) || (isCommand(e) && e.id.startsWith("settings:"))) return 1;
   if (isFile(e)) return 2;
   return 3;
 }
